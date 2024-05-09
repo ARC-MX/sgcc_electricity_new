@@ -1,0 +1,56 @@
+
+template:
+  - trigger:
+      - platform: event
+        event_type: "state_changed"
+        event_data:
+          entity_id: sensor.electricity_charge_balance_户号
+    sensor:
+      - name: electricity_charge_balance_entity_户号
+        unique_id: electricity_charge_balance_entity_户号
+        state: "{{ states('sensor.electricity_charge_balance_户号') }}"
+        state_class: measurement
+        unit_of_measurement: "CNY"
+        device_class: monetary
+
+  - trigger:
+      - platform: event
+        event_type: "state_changed"
+        event_data:
+          entity_id: sensor.last_electricity_usage_户号
+    sensor:
+      - name: 最近一天用电量
+        unique_id: last_electricity_usage_entity_户号
+        state: "{{ states('sensor.last_electricity_usage_户号') }}"
+        attributes: 
+          present_date: "{{ state_attr('sensor.last_electricity_usage_户号', 'present_date') }}"
+          last_updated: "{{ state_attr('sensor.last_electricity_usage_户号', 'last_updated') }}"
+        state_class: total # total_increasing
+        unit_of_measurement: "kWh" # string (optional, default: None)
+        device_class: energy
+
+  - trigger:
+      - platform: event
+        event_type: "state_changed"
+        event_data:
+          entity_id: sensor.yearly_electricity_usage
+    sensor:
+      - name: yearly_electricity_usage_entity_户号
+        unique_id: yearly_electricity_usage_entity_户号
+        state: "{{ states('sensor.yearly_electricity_usage_户号') }}"
+        state_class: total_increasing
+        unit_of_measurement: "kWh"
+        device_class: energy
+
+  - trigger:
+      - platform: event
+        event_type: "state_changed"
+        event_data:
+          entity_id: sensor.yearly_electricity_charge_户号
+    sensor:
+      - name: yearly_electricity_charge_entity_户号
+        unique_id: yearly_electricity_charge_entity_户号
+        state: "{{ states('sensor.yearly_electricity_charge_户号') }}"
+        state_class: total_increasing
+        unit_of_measurement: "CNY"
+        device_class: monetary

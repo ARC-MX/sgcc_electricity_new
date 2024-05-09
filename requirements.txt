@@ -1,0 +1,9 @@
+requests==2.31.0
+selenium==4.5.0
+schedule==1.1.0
+Pillow==9.2.0
+undetected_chromedriver==3.4.7
+# pypushdeer==0.0.3
+pymongo~=3.12.0
+python-dotenv
+opencv-python
