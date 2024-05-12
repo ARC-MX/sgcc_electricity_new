@@ -26,8 +26,6 @@ def main():
         JOB_START_TIME = os.getenv("JOB_START_TIME")
         FIRST_SLEEP_TIME = int(os.getenv("FIRST_SLEEP_TIME"))
         LOG_LEVEL = os.getenv("LOG_LEVEL")
-        TUJIAN_UNAME = os.getenv("TUJIAN_UNAME")
-        TUJIAN_PASSWORD = os.getenv("TUJIAN_PASSWORD")
 
     except Exception as e:
         logging.error(f"读取.env文件失败，程序将退出，错误信息为{e}")
@@ -36,7 +34,7 @@ def main():
     logger_init(LOG_LEVEL)
     logging.info("程序开始，当前仓库版本为1.3.3，仓库地址为https://github.com/ARC-MX/sgcc_electricity_new.git")
 
-    fetcher = DataFetcher(PHONE_NUMBER, PASSWORD, TUJIAN_UNAME, TUJIAN_PASSWORD)
+    fetcher = DataFetcher(PHONE_NUMBER, PASSWORD)
     updator = SensorUpdator(HASS_URL, HASS_TOKEN)
     logging.info(f"当前登录的用户名为: {PHONE_NUMBER}，homeassistant地址为{HASS_URL},程序将在每天{JOB_START_TIME}执行")
     schedule.every().day.at(JOB_START_TIME).do(run_task, fetcher, updator)

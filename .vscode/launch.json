@@ -9,8 +9,9 @@
             "type": "debugpy",
             "request": "launch",
             // "program": "${file}",
-            "program": "scripts\\main.py",
-            "console": "integratedTerminal"
+            "program": "main.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}\\scripts"
         }
     ]
 }
