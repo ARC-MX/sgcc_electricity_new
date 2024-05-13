@@ -499,7 +499,7 @@ class DataFetcher:
     # 增加储存30天用电量的到mongodb的函数
     def save_30_days_usage(self, driver, user_id):
         """储存30天用电量"""
-        self._click_button(driver, By.XPATH, "//*[@id='pane-second']/div[1]/label[2]/span[2]")
+        self._click_button(driver, By.XPATH, "//*[@id='pane-second']/div[1]/div/label[2]/span[1]")
         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
         # 等待30天用电量的数据出现
         usage_element = driver.find_element(By.XPATH,
