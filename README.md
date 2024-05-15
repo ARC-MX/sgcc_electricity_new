@@ -1,4 +1,4 @@
-**重要说明：**原作者@renhai-lab 已于2023年10将项目归档，原仓库不再更新。这个版本是在原仓库基础上更新的。在此向原作者表达谢意和致敬。
+**重要说明：**原作者@renhai-lab 已于2023年10将项目归档，原仓库不再更新。这个版本是在原仓库基础上更新的。在此向原作者表达谢意和致敬。验证码识别已经从最开始的在线商业API替换成离线神经网络检测版本，请使用本仓库的同学点个小星星，或者打赏鼓励。
 
 # ⚡️国家电网电力获取
 
@@ -8,6 +8,7 @@
 
 <p align="center">
 <img src="assets/image-20230730135540291.png" alt="mini-graph-card" width="400">
+<img src="assets/image-20240514.jpg" alt="mini-graph-card" width="400">
 </p>
 
 本应用可以帮助你将国网的电费、用电量数据接入homeassistant，实现实时追踪家庭用电量情况；并且可以将每日用电量保存到数据库，历史有迹可循。具体提供两类数据：
@@ -20,6 +21,8 @@
    | sensor.electricity_charge_balance | 预付费显示电费余额，反之显示上月应交电费，单位元                      |
    | sensor.yearly_electricity_usage   | 今年总用电量，单位KWH、度。                                           |
    | sensor.yearly_electricity_charge  | 今年总用电费用，单位元                                                |
+   | sensor.month_electricity_usage    | 最近一天用电量，单位KWH、度。属性含present_date（查询电量代表的日期） |
+   | sensor.month_electricity_charge   | 上月总用电费用，单位元     属性含present_date（查询电量代表的日期）   |
 2. 可选，近三十天每日用电量数据（mongodb数据库），例如：
 
    ![image-20230731094609016](assets/image-20230731111508970.png)
@@ -39,9 +42,11 @@
 
 通过python的selenium包获取国家电网的数据，通过homeassistant的提供的[REST API](https://developers.home-assistant.io/docs/api/rest/)将采用POST请求将实体状态更新到homeassistant。
 
-由于国家电网添加了滑动验证码登录验证，我这边采取了调用商业API的方式，没时间找靠谱的离线方案，（ddddocr识别准确率太低），如果后续找到靠谱的离线方案速度还可以的话我会考虑更新，暂时先这样吧。
+<!-- 由于国家电网添加了滑动验证码登录验证，我这边采取了调用商业API的方式，没时间找靠谱的离线方案，（ddddocr识别准确率太低），如果后续找到靠谱的离线方案速度还可以的话我会考虑更新，暂时先这样吧。
 在线验证API的注册地址[http://www.ttshitu.com/user/soft.html](http://www.ttshitu.com/user/soft.html)，注册推荐码: [c611f7018fc74aa3b75c30584108c5c6](c611f7018fc74aa3b75c30584108c5c6)
-价格也不贵2块钱基本够大半年了。
+价格也不贵2块钱基本够大半年了。 -->
+
+国家电网添加了滑动验证码登录验证，我这边最早采取了调用商业API的方式，现在已经更新成了离线方案。利用Yolov3神经网络识别验证码，请大家放心使用。
 
 ## 三、安装
 
@@ -162,7 +167,7 @@
 
    ```bash
    git clone https://github.com/ARC-MX/sgcc_electricity_new.git
-   cd sgcc_electricity
+   cd sgcc_electricity_new
    ```
 2. 参考example.env编写.env文件
 
@@ -180,7 +185,7 @@
 
 ### 3）方法三：不安装docker，安装python环境后直接运行：
 
-克隆仓库之后,参考Dockerfile的命令，`<u>`自行配置安装chrome浏览器和selenium浏览器驱动`</u>`，安装mongodb，将example.env文件复制为.env文件到scripts文件夹下，然后运行main.py文件。
+克隆仓库之后,参考Dockerfile的命令，`<u>`自行配置安装chrome浏览器和selenium浏览器驱动 `</u>`，安装mongodb，将example.env文件复制为.env文件到scripts文件夹下，然后运行main.py文件。
 
 ### 4）方法四：使用可视化docker管理工具[portainer]([url](https://www.portainer.io/))部署：
 
@@ -198,67 +203,101 @@
 
 - 如果你有一个户号，参照以下配置：
 
-```yaml
 # Example configuration.yaml entry
+
 # 文件中只能有一个template
+
 template:
-  # 参考文档： https://www.home-assistant.io/integrations/template
-  - trigger:
-      - platform: event
-        event_type: "state_changed"
-        event_data:
-          entity_id: sensor.electricity_charge_balance
-    sensor:
-      - name: electricity_charge_balance_entity
-        unique_id: electricity_charge_balance_entity
-        state: "{{ states('sensor.electricity_charge_balance') }}"
-        state_class: total
-        unit_of_measurement: "CNY"
-        device_class: monetary
-      
-  - trigger:
-      - platform: event
-        event_type: "state_changed"
-        event_data:
-          entity_id: sensor.last_electricity_usage
-    sensor:
-      - name: last_electricity_usage_entity
-        unique_id: last_electricity_usage_entity
-        state: "{{ states('sensor.last_electricity_usage') }}"
-        attributes:
-          present_date: "{{ state_attr('sensor.last_electricity_usage', 'present_date') }}"
-          last_updated: "{{ state_attr('sensor.last_electricity_usage', 'last_updated') }}"
-        state_class: measurement
-        unit_of_measurement: "kWh"
-        device_class: energy
-      
-  - trigger:
-      - platform: event
-        event_type: "state_changed"
-        event_data:
-          entity_id: sensor.yearly_electricity_usage
-    sensor:
-      - name: yearly_electricity_usage_entity
-        unique_id: yearly_electricity_usage_entity
-        state: "{{ states('sensor.yearly_electricity_usage') }}"
-        state_class: total
-        unit_of_measurement: "kWh"
-        device_class: energy
 
-  - trigger:
-      - platform: event
-        event_type: "state_changed"
-        event_data:
-          entity_id: sensor.yearly_electricity_charge
-    sensor:
-      - name: yearly_electricity_charge_entity
-        unique_id: yearly_electricity_charge_entity
-        state: "{{ states('sensor.yearly_electricity_charge') }}"
-        state_class: total
-        unit_of_measurement: "CNY"
-        device_class: monetary
-```
+# 参考文档： https://www.home-assistant.io/integrations/template
 
+- trigger:
+
+  - platform: event
+    event_type: "state_changed"
+    event_data:
+    entity_id: sensor.electricity_charge_balance
+    sensor:
+  - name: electricity_charge_balance_entity
+    unique_id: electricity_charge_balance_entity
+    state: "{{ states('sensor.electricity_charge_balance') }}"
+    state_class: total
+    unit_of_measurement: "CNY"
+    device_class: monetary
+- trigger:
+
+  - platform: event
+    event_type: "state_changed"
+    event_data:
+    entity_id: sensor.last_electricity_usage
+    sensor:
+  - name: last_electricity_usage_entity
+    unique_id: last_electricity_usage_entity
+    state: "{{ states('sensor.last_electricity_usage') }}"
+    attributes:
+    present_date: "{{ state_attr('sensor.last_electricity_usage', 'present_date') }}"
+    last_updated: "{{ state_attr('sensor.last_electricity_usage', 'last_updated') }}"
+    state_class: measurement
+    unit_of_measurement: "kWh"
+    device_class: energy
+- trigger:
+
+  - platform: event
+    event_type: "state_changed"
+    event_data:
+    entity_id: sensor.month_electricity_usage
+    sensor:
+  - name: month_electricity_usage_entity
+    unique_id: month_electricity_usage_entity
+    state: "{{ states('sensor.month_electricity_usage') }}"
+    attributes:
+    present_date: "{{ state_attr('sensor.month_electricity_usage', 'present_date') }}"
+    last_updated: "{{ state_attr('sensor.month_electricity_usage', 'month_updated') }}"
+    state_class: measurement
+    unit_of_measurement: "kWh"
+    device_class: energy
+- trigger:
+
+  - platform: event
+    event_type: "state_changed"
+    event_data:
+    entity_id: sensor.month_electricity_charge
+    sensor:
+  - name: month_electricity_charge_entity
+    unique_id: month_electricity_charge_entity
+    state: "{{ states('sensor.month_electricity_charge') }}"
+    attributes:
+    present_date: "{{ state_attr('sensor.month_electricity_charge', 'present_date') }}"
+    last_updated: "{{ state_attr('sensor.month_electricity_charge', 'month_updated') }}"
+    state_class: measurement
+    unit_of_measurement: "CNY"
+    device_class: monetary
+- trigger:
+
+  - platform: event
+    event_type: "state_changed"
+    event_data:
+    entity_id: sensor.yearly_electricity_usage
+    sensor:
+  - name: yearly_electricity_usage_entity
+    unique_id: yearly_electricity_usage_entity
+    state: "{{ states('sensor.yearly_electricity_usage') }}"
+    state_class: total
+    unit_of_measurement: "kWh"
+    device_class: energy
+- trigger:
+
+  - platform: event
+    event_type: "state_changed"
+    event_data:
+    entity_id: sensor.yearly_electricity_charge
+    sensor:
+  - name: yearly_electricity_charge_entity
+    unique_id: yearly_electricity_charge_entity
+    state: "{{ states('sensor.yearly_electricity_charge') }}"
+    state_class: total
+    unit_of_measurement: "CNY"
+    device_class: monetary
 - 如果你有多个户号，每个户号参照[configuration.yaml](template/configuration.yaml)配置。
 
   **注：如果你有一个户号，在HA里就是以上实体名；****如果你有多个户号，实体名称还要加 “_户号”后缀，举例:sensor.last_electricity_usage_1234567890**
@@ -360,6 +399,14 @@ sensor:
 - 将间歇执行设置为定时执行: JOB_START_TIME，24小时制，例如"07:00”则为每天早上7点执行，第一次启动程序如果时间晚于早上7点则会立即执行一次。
 - 给last_daily_usage增加present_date，用来确定更新的是哪一天的电量。一般查询的日期会晚一到两天。
 - 对configuration.yaml中自定义实体部分修改。
+
+# 支付宝&微信 打赏码
+
+
+<center class="half">
+<img src="assets/Alipay.png"  width=200 style="margin-right: 70px";/>
+<img src="assets/WeiChatpay.png"  width=200/>
+</center>
 
 TO-DO
 

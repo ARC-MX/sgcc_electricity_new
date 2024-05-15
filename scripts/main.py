@@ -54,20 +54,22 @@ def main():
 
 def run_task(data_fetcher: DataFetcher, sensor_updator: SensorUpdator):
     try:
-        user_id_list, balance_list, last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list = data_fetcher.fetch()
-
+        user_id_list, balance_list, last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list, month_list, month_usage_list, month_charge_list = data_fetcher.fetch()
+        # user_id_list, balance_list, last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list, month_list, month_usage_list, month_charge_list = ['123456'],[58.1],['2024-05-12'],[3.0],['239.1'],['533'],['2024-04-01-2024-04-30'],['118'],['52.93']
         for i in range(0, len(user_id_list)):
             profix = f"_{user_id_list[i]}" if len(user_id_list) > 1 else ""
             if balance_list[i] is not None:
                 sensor_updator.update(BALANCE_SENSOR_NAME + profix, None, balance_list[i], BALANCE_UNIT)
             if last_daily_usage_list[i] is not None:
-                sensor_updator.update(DAILY_USAGE_SENSOR_NAME + profix, last_daily_date_list[i],
-                                      last_daily_usage_list[i], USAGE_UNIT)
+                sensor_updator.update(DAILY_USAGE_SENSOR_NAME + profix, last_daily_date_list[i], last_daily_usage_list[i], USAGE_UNIT)
             if yearly_usage_list[i] is not None:
                 sensor_updator.update(YEARLY_USAGE_SENSOR_NAME + profix, None, yearly_usage_list[i], USAGE_UNIT)
             if yearly_charge_list[i] is not None:
-                sensor_updator.update(YEARLY_CHARGE_SENESOR_NAME + profix, None, yearly_charge_list[i], BALANCE_UNIT)
-
+                sensor_updator.update(YEARLY_CHARGE_SENSOR_NAME + profix, None, yearly_charge_list[i], BALANCE_UNIT)
+            if month_charge_list[i] is not None:
+                sensor_updator.update(MONTH_CHARGE_SENSOR_NAME + profix, month_list[i], month_charge_list[i], BALANCE_UNIT, month=True)
+            if month_usage_list[i] is not None:
+                sensor_updator.update(MONTH_USAGE_SENSOR_NAME + profix, month_list[i], month_usage_list[i], USAGE_UNIT, month=True)
         logging.info("state-refresh task run successfully!")
     except Exception as e:
         logging.error(f"state-refresh task failed, reason is {e}")

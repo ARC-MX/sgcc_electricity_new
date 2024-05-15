@@ -12,7 +12,9 @@ API_PATH = "/api/states/" # https://developers.home-assistant.io/docs/api/rest/
 BALANCE_SENSOR_NAME = "sensor.electricity_charge_balance"
 DAILY_USAGE_SENSOR_NAME = "sensor.last_electricity_usage"
 YEARLY_USAGE_SENSOR_NAME = "sensor.yearly_electricity_usage"
-YEARLY_CHARGE_SENESOR_NAME = "sensor.yearly_electricity_charge"
+YEARLY_CHARGE_SENSOR_NAME = "sensor.yearly_electricity_charge"
+MONTH_USAGE_SENSOR_NAME = "sensor.month_electricity_usage"
+MONTH_CHARGE_SENSOR_NAME = "sensor.month_electricity_charge"
 BALANCE_UNIT = "CNY"
 USAGE_UNIT = "KWH"
 

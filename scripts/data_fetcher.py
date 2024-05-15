@@ -269,13 +269,13 @@ class DataFetcher:
             balance_list = self._get_electric_balances(driver, user_id_list)  #
             time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
             ### get data except electricity charge balance
-            last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list = self._get_other_data(driver, user_id_list)
+            last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list, month_list, month_usage_list, month_charge_list  = self._get_other_data(driver, user_id_list)
             time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
             driver.quit()
 
             logging.info("Webdriver quit after fetching data successfully.")
             logging.info("浏览器已退出")
-            return user_id_list, balance_list, last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list
+            return user_id_list, balance_list, last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list, month_list, month_usage_list, month_charge_list 
 
         finally:
             driver.quit()
@@ -380,7 +380,9 @@ class DataFetcher:
         last_daily_usage_list = []
         yearly_usage_list = []
         yearly_charge_list = []
-
+        month_list = []
+        month_charge_list = []
+        month_usage_list = []
         # swithc to electricity usage page
         driver.get(ELECTRIC_USAGE_URL)
 
@@ -400,6 +402,14 @@ class DataFetcher:
                 logging.info(
                     f"Get year power charge for {user_id_list[i - 1]} successfully, yealrly charge is {yearly_charge} CNY")
 
+            # get month usage
+            month, month_usage, month_charge = self._get_month_usage(driver)
+            if month is None:
+                logging.error(f"Get month power usage for {user_id_list[i - 1]} failed, pass")
+            else:
+                for m in range(len(month)):
+                    logging.info(
+                        f"Get month power charge for {user_id_list[i - 1]} successfully, {month[m]} usage is {month_usage[m]} KWh, charge is {month_charge[m]} CNY.")
             # get yesterday usage
             last_daily_datetime, last_daily_usage = self._get_yesterday_usage(driver)
 
@@ -417,6 +427,9 @@ class DataFetcher:
             last_daily_usage_list.append(last_daily_usage)
             yearly_charge_list.append(yearly_charge)
             yearly_usage_list.append(yearly_usage)
+            month_list.append(month[-1])
+            month_charge_list.append(month_charge[-1])
+            month_usage_list.append(month_usage[-1])
 
             # switch to next user id
             if i != len(user_id_list):
@@ -425,7 +438,7 @@ class DataFetcher:
                 self._click_button(driver, By.XPATH,
                                    f"//body/div[@class='el-select-dropdown el-popper']//ul[@class='el-scrollbar__view el-select-dropdown__list']/li[{i + 1}]")
 
-        return last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list
+        return last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list, month_list, month_usage_list, month_charge_list
 
     def _get_user_ids(self, driver):
 
@@ -495,6 +508,31 @@ class DataFetcher:
             return last_daily_date, float(usage_element.text)
         except:
             return None
+
+    def _get_month_usage(self, driver):
+        """获取每月用电量"""
+
+        try:
+            self._click_button(driver, By.XPATH, "//div[@class='el-tabs__nav is-top']/div[@id='tab-first']")
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+            # wait for month displayed
+            target = driver.find_element(By.CLASS_NAME, "total")
+            WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(EC.visibility_of(target))
+            month_element = driver.find_element(By.XPATH, "//*[@id='pane-first']/div[1]/div[2]/div[2]/div/div[3]/table/tbody").text
+            month_element = month_element.split("\n")
+            month_element.remove("MAX")
+            month_element = np.array(month_element).reshape(-1, 3)
+            # 将每月的用电量保存为List
+            month = []
+            usage = []
+            charge = []
+            for i in range(len(month_element)):
+                month.append(month_element[i][0])
+                usage.append(month_element[i][1])
+                charge.append(month_element[i][2])
+            return month, usage, charge
+        except:
+            return None,None,None
 
     # 增加储存30天用电量的到mongodb的函数
     def save_30_days_usage(self, driver, user_id):
