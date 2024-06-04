@@ -50,7 +50,12 @@
 
 ## 三、安装
 
-### 1）方法一（推荐）：docker镜像部署，速度快
+### 1）注册国家电网账户
+首先要注册国家电网账户，绑定电表，并且可以手动查询电量
+
+注册网址：[https://www.95598.cn/osgweb/login](https://www.95598.cn/osgweb/login)
+
+### 2）docker镜像部署，速度快
 
 1. 安装docker和homeassistant，[Homeassistant极简安装法](https://github.com/renhaiidea/easy-homeassistant)。
 2. 克隆仓库
@@ -102,7 +107,6 @@
    # 日志级别
    LOG_LEVEL="INFO" # 例如“DEBUG”可以查看出错情况
    ```
-
 4. 运行
 
    ```bash
@@ -328,7 +332,6 @@ sensor:
 - 对configuration.yaml中自定义实体部分修改。
 
 # 支付宝&微信 打赏码
-
 
 <center class="half">
 <img src="assets/Alipay.png"  width=200 style="margin-right: 70px";/>

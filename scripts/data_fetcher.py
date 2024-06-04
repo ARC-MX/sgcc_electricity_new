@@ -27,6 +27,8 @@ import cv2
 from onnx import ONNX
 import platform
 
+DEBUG = False
+
 def __ease_out_expo(sep):
     if sep == 1:
         return 1
@@ -259,8 +261,12 @@ class DataFetcher:
         logging.info("Webdriver initialized.")
 
         try:
-            if self._login(driver):
-                raise Exception("_login unsuccessed !")
+            if DEBUG:
+                driver.get(LOGIN_URL)
+                pass
+            else:
+                if self._login(driver):
+                    raise Exception("_login unsuccessed !")
             logging.info(f"Login successfully on {LOGIN_URL}")
             time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
             user_id_list = self._get_user_ids(driver)
