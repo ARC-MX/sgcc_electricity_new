@@ -2,9 +2,9 @@
 
 # ⚡️国家电网电力获取
 
-[![Docker Image CI](https://github.com/renhaiidea/sgcc_electricity/actions/workflows/docker-image.yml/badge.svg)](https://github.com/renhaiidea/sgcc_electricity/actions/workflows/docker-image.yml)
-[![Image Size](https://img.shields.io/docker/image-size/renhai/sgcc_electricity)](https://hub.docker.com/r/renhai/sgcc_electricity)
-[![Docker Pull](https://img.shields.io/docker/pulls/renhai/sgcc_electricity?color=%2348BB78&logo=docker&label=pulls)](https://hub.docker.com/r/renhai/sgcc_electricity)
+[![Docker Image CI](https://github.com/ARC-MX/sgcc_electricity_new/actions/workflows/docker-image.yml/badge.svg)](https://github.com/ARC-MX/sgcc_electricity_new/actions/workflows/docker-image.yml)
+[![Image Size](https://img.shields.io/docker/image-size/arcw/sgcc_electricity)](https://hub.docker.com/r/arcw/sgcc_electricity)
+[![Docker Pull](https://img.shields.io/docker/pulls/arcw/sgcc_electricity?color=%2348BB78&logo=docker&label=pulls)](https://hub.docker.com/r/arcw/sgcc_electricity)
 
 <p align="center">
 <img src="assets/image-20230730135540291.png" alt="mini-graph-card" width="400">
@@ -36,7 +36,7 @@
 
 > - `linux/amd64`：适用于 x86-64（amd64）架构的 Linux 系统，例如windows电脑。
 > - `linux/arm64`：适用于 ARMv8 架构的 Linux 系统，例如树莓派，N1盒子。
-> - 其他架构比如32位arm/v7，不提供docker镜像，可参考[github仓库](https://github.com/renhaiidea/sgcc_electricity.git)的[Dockerfile-for-github-action-armv7](%B9%E9%B5%B5%2FDockerfile-for-github-action-armv7)自行部署。
+> - 其他架构比如32位arm/v7，不提供docker镜像，可参考[github仓库](https://github.com/ARC-MX/sgcc_electricity_new.git)的[Dockerfile-for-github-action-armv7](%B9%E9%B5%B5%2FDockerfile-for-github-action-armv7)自行部署。
 
 ## 二、实现流程
 
@@ -53,15 +53,16 @@
 ### 1）方法一（推荐）：docker镜像部署，速度快
 
 1. 安装docker和homeassistant，[Homeassistant极简安装法](https://github.com/renhaiidea/easy-homeassistant)。
-2. 创建项目文件夹
+2. 克隆仓库
 
    ```bash
-   mkdir sgcc_electricity
-   cd sgcc_electricity 
+   git clone https://github.com/ARC-MX/sgcc_electricity_new.git
+   cd sgcc_electricity_new
    ```
 3. 创建环境变量文件
 
    ```bash
+   cp example.env .env
    vim .env
    ```
 
@@ -101,80 +102,7 @@
    # 日志级别
    LOG_LEVEL="INFO" # 例如“DEBUG”可以查看出错情况
    ```
-4. 编写docker-compose.yml文件
 
-   ```bash
-   vim docker-compose.yml
-   ```
-
-   填入以下内容
-
-   ```yaml
-   version: "3"
-
-   services:
-     app:
-       env_file:
-         - .env
-       depends_on:
-         - mongo
-       image: renhai/sgcc_electricity:latest
-       container_name: sgcc_electricity
-       networks:
-         sgcc_network:
-       environment:
-         - SET_CONTAINER_TIMEZONE=true
-         - CONTAINER_TIMEZONE=Asia/Shanghai
-       restart: unless-stopped
-       command: python3 main.py
-
-   # 默认将近30天数据写入mongo数据库，方便查询
-     mongo:
-       image: mongo:4.4.18
-       restart: always
-       container_name: mongo-for-sgcc
-       networks:
-         sgcc_network:
-       environment:
-         MONGO_INITDB_ROOT_USERNAME: USERNAME # 修改为自己的用户名
-         MONGO_INITDB_ROOT_PASSWORD: PASSWORD # 修改为自己的密码
-         MONGODB_DATABASE: "homeassistant" # 修改为自己的数据库名,和.env中的数据库名一致
-         CONTAINER_TIMEZONE: Asia/Shanghai
-       volumes:
-         - ./db:/data/db
-
-   networks:
-      sgcc_network:
-   ```
-5. 运行
-
-   ```bash
-   docker compose up --build 
-   # 或者后台运行
-   docker compose up -d --build
-   ```
-6. 更新容器
-
-   ```bash
-   docker compose down # 删除容器
-   docker compose pull # 更新镜像
-   docker compose up # 重新运行
-   ```
-
-### 2）方法二：本地自行构建容器
-
-1. 克隆仓库
-
-   ```bash
-   git clone https://github.com/ARC-MX/sgcc_electricity_new.git
-   cd sgcc_electricity_new
-   ```
-2. 参考example.env编写.env文件
-
-   ```
-   cp example.env ./env
-   ```
-3. 查阅docker-compose文件，默认不需要修改
 4. 运行
 
    ```bash
@@ -182,14 +110,13 @@
    # 或者后台运行
    docker compose up -d --build
    ```
+5. 更新容器
 
-### 3）方法三：不安装docker，安装python环境后直接运行：
-
-克隆仓库之后,参考Dockerfile的命令，`<u>`自行配置安装chrome浏览器和selenium浏览器驱动 `</u>`，安装mongodb，将example.env文件复制为.env文件到scripts文件夹下，然后运行main.py文件。
-
-### 4）方法四：使用可视化docker管理工具[portainer]([url](https://www.portainer.io/))部署：
-
-方法见 [issue #26](https://github.com/renhai-lab/sgcc_electricity/issues/26#issuecomment-1752273119)
+   ```bash
+   docker compose down # 删除容器
+   docker compose pull # 更新镜像
+   docker compose up # 重新运行
+   ```
 
 ## 四、配置与使用
 

@@ -1,9 +1,10 @@
+# cmake==3.10.3
 requests==2.31.0
 selenium==4.5.0
 schedule==1.1.0
 Pillow==9.2.0
 undetected_chromedriver==3.4.7
 pymongo~=3.12.0
+onnxruntime==1.17.3
 python-dotenv
-opencv-python
-onnxruntime
+opencv-python==4.9.0.80

@@ -6,10 +6,10 @@ services:
       - .env
     depends_on:
       - mongo
-    #       image: renhai/sgcc_electricity:latest # armv7 32架构的镜像为armv7-latest
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: arcw/sgcc_electricity:latest # armv8
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
     container_name: sgcc_electricity
     networks:
       sgcc_network:
