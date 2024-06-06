@@ -122,6 +122,30 @@
    docker compose up # 重新运行
    ```
 
+6. 运行成功应该显示如下日志：
+  ```bash
+  2024-06-06 16:00:43  [INFO    ] ---- 程序开始，当前仓库版本为1.3.3，仓库地址为https://github.com/ARC-MX/sgcc_electricity_new.git
+2024-06-06 16:00:43  [INFO    ] ---- enable_database_storage为false，不会储存到数据库
+2024-06-06 16:00:43  [INFO    ] ---- 当前登录的用户名为: xxxxxx，homeassistant地址为http://192.168.1.xx:8123/,程序将在每天00:00执行
+2024-06-06 16:00:43  [INFO    ] ---- 此次为首次运行，等待时间(FIRST_SLEEP_TIME)为10秒，可在.env中设置
+2024-06-06 16:00:59  [INFO    ] ---- Webdriver initialized.
+2024-06-06 16:01:20  [INFO    ] ---- Click login button.
+2024-06-06 16:01:20  [INFO    ] ---- Get electricity canvas image successfully.
+2024-06-06 16:01:20  [INFO    ] ---- Image CaptCHA distance is xxx.
+2024-06-06 16:01:25  [INFO    ] ---- Login successfully on https://www.95598.cn/osgweb/login
+2024-06-06 16:01:33  [INFO    ] ---- 将获取1户数据，user_id: ['xxxxxxx']
+2024-06-06 16:01:42  [INFO    ] ---- Get electricity charge balance for xxxxxxx successfully, balance is xxx CNY.
+2024-06-06 16:01:51  [INFO    ] ---- Get year power usage for xxxxxxx successfully, usage is xxx kwh
+2024-06-06 16:01:51  [INFO    ] ---- Get year power charge for xxxxxxx successfully, yealrly charge is xxx CNY
+2024-06-06 16:01:55  [INFO    ] ---- Get month power charge for xxxxxxx successfully, 01 月 usage is xxx KWh, charge is xxx CNY.
+2024-06-06 16:01:55  [INFO    ] ---- Get month power charge for xxxxxxx successfully, 02 月 usage is xxx KWh, charge is xxx CNY.
+2024-06-06 16:01:55  [INFO    ] ---- Get month power charge for xxxxxxx successfully, 2024-03-01-2024-03-31 usage is xxx KWh, charge is xxx CNY.
+2024-06-06 16:01:55  [INFO    ] ---- Get month power charge for xxxxxxx successfully, 2024-04-01-2024-04-30 usage is xxx KWh, charge is xxx CNY.
+2024-06-06 16:01:59  [INFO    ] ---- Get daily power consumption for xxxxxxx successfully, , 2024-06-05 usage is xxx kwh.
+2024-06-06 16:02:07  [INFO    ] ---- Webdriver quit after fetching data successfully.
+2024-06-06 16:02:07  [INFO    ] ---- 浏览器已退出
+  ```
+
 ## 四、配置与使用
 
 ### 1）**第一次运行需要创建并填写.env文件，按文件说明进行填写。**
