@@ -35,8 +35,8 @@
 本镜像支持架构：
 
 > - `linux/amd64`：适用于 x86-64（amd64）架构的 Linux 系统，例如windows电脑。
-> - `linux/arm64`：适用于 ARMv8 架构的 Linux 系统，例如树莓派，N1盒子。
-> - 其他架构比如32位arm/v7，不提供docker镜像，可参考[github仓库](https://github.com/ARC-MX/sgcc_electricity_new.git)的[Dockerfile-for-github-action-armv7](%B9%E9%B5%B5%2FDockerfile-for-github-action-armv7)自行部署。
+> - `linux/arm64`：适用于 ARMv8 架构的 Linux 系统，例如树莓派3+，N1盒子等。
+> - `linux/armv7`，适用于 ARMv8 架构的 Linux 系统，例如树莓派2，玩客云等。
 
 ## 二、实现流程
 
@@ -51,6 +51,7 @@
 ## 三、安装
 
 ### 1）注册国家电网账户
+
 首先要注册国家电网账户，绑定电表，并且可以手动查询电量
 
 注册网址：[https://www.95598.cn/osgweb/login](https://www.95598.cn/osgweb/login)
@@ -121,9 +122,9 @@
    docker compose pull # 更新镜像
    docker compose up # 重新运行
    ```
-
 6. 运行成功应该显示如下日志：
-  ```bash
+
+```bash
   2024-06-06 16:00:43  [INFO    ] ---- 程序开始，当前仓库版本为1.3.3，仓库地址为https://github.com/ARC-MX/sgcc_electricity_new.git
 2024-06-06 16:00:43  [INFO    ] ---- enable_database_storage为false，不会储存到数据库
 2024-06-06 16:00:43  [INFO    ] ---- 当前登录的用户名为: xxxxxx，homeassistant地址为http://192.168.1.xx:8123/,程序将在每天00:00执行
@@ -144,7 +145,7 @@
 2024-06-06 16:01:59  [INFO    ] ---- Get daily power consumption for xxxxxxx successfully, , 2024-06-05 usage is xxx kwh.
 2024-06-06 16:02:07  [INFO    ] ---- Webdriver quit after fetching data successfully.
 2024-06-06 16:02:07  [INFO    ] ---- 浏览器已退出
-  ```
+```
 
 ## 四、配置与使用
 

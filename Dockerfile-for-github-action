@@ -21,17 +21,17 @@ RUN apt-get --allow-releaseinfo-change update \
 RUN cd /tmp \
     && python3 -m pip install --upgrade pip 
 
-# RUN if [${TARGETARCH} == "arm"]; then \
-#         cd /tmp \
-#         && curl -O -L https://github.com/nknytk/built-onnxruntime-for-raspberrypi-linux/raw/master/wheels/buster/onnxruntime-1.8.1-cp39-cp39-linux_armv7l.whl \
-#         && PIP_ROOT_USER_ACTION=ignore pip3 install onnxruntime-1.8.1-cp39-cp39-linux_armv7l.whl \
-#         && PIP_ROOT_USER_ACTION=ignore pip3 install cmake==3.14.3; \
-#     fi 
+RUN if [${TARGETARCH} == "arm"]; then \
+        cd /tmp \
+        && curl -O -L https://github.com/nknytk/built-onnxruntime-for-raspberrypi-linux/blob/master/wheels/bullseye/onnxruntime-1.16.0-cp39-cp39-linux_armv7l.whl \
+        && PIP_ROOT_USER_ACTION=ignore pip3 install onnxruntime-1.16.0-cp39-cp39-linux_armv7l.whl \
+        && PIP_ROOT_USER_ACTION=ignore pip3 install cmake==3.14.3; \
+    fi 
 
-# RUN if [${TARGETARCH} == "arm64"]; then \
-#         cd /tmp \
-#         && PIP_ROOT_USER_ACTION=ignore pip3 install onnxruntime==1.8.1; \
-#     fi 
+RUN if [${TARGETARCH} == "arm64"]; then \
+        cd /tmp \
+        && PIP_ROOT_USER_ACTION=ignore pip3 install onnxruntime==1.17.3; \
+    fi 
 
 RUN cd /tmp \
     && PIP_ROOT_USER_ACTION=ignore pip install \

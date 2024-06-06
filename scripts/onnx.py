@@ -1,4 +1,5 @@
-import cv2
+# import cv2
+from PIL import ImageDraw,Image,ImageOps
 import numpy as np
 import onnxruntime
 import time
@@ -100,12 +101,17 @@ class ONNX:
             top, left, right, bottom = box
             # print('class: {}, score: {}'.format(CLASSES[cl], score))
             # print('box coordinate left,top,right,down: [{}, {}, {}, {}]'.format(top, left, right, bottom))
-            image = cv2.rectangle(image, (top, left), (right, bottom), (0, 0, 255), 1)
+            # image = cv2.rectangle(image, (top, left), (right, bottom), (0, 0, 255), 1)
+            draw = ImageDraw.Draw(image)
+            draw.rectangle([(top, left), (right, bottom)],  outline ="red")
             # cv2.imwrite("result"+str(left)+".jpg",image)
-            image = cv2.putText(image, '{0} {1:.2f}'.format(CLASSES[cl], score),
-                        (top, left),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.6, (0, 0, 255), 2)
+            # font = ImageFont.truetype(font='PingFang.ttc', size=40)
+            draw.text(xy=(top, left),text='{0} {1:.2f}'.format(CLASSES[cl], score), fill=(255, 0, 0))
+
+            # image = cv2.putText(image, '{0} {1:.2f}'.format(CLASSES[cl], score), 
+            #             (top, left),
+            #             cv2.FONT_HERSHEY_SIMPLEX,
+            #             0.6, (0, 0, 255), 2)
         return image
 
     # 获取预测框
@@ -187,17 +193,21 @@ class ONNX:
         dh /= 2
 
         if shape[::-1] != new_unpad:  # resize
-            img = cv2.resize(img, new_unpad, interpolation=cv2.INTER_LINEAR)
-
+            # img = cv2.resize(img, new_unpad, interpolation=cv2.INTER_LINEAR)
+            img = img.resize(new_unpad)
         top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
         left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
 
-        img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)  # add border
+        # img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)  # add border
+        img = ImageOps.expand(img, border=(left, top, right, bottom), fill=0)##left,top,right,bottom
         return img, ratio, (dw, dh)
 
     def _inference(self,image):
-        org_img = cv2.resize(image, [416, 416]) # resize后的原图 (640, 640, 3)
-        img = cv2.cvtColor(org_img, cv2.COLOR_BGR2RGB).transpose(2, 0, 1)
+        # org_img = cv2.resize(image, [416, 416]) # resize后的原图 (640, 640, 3)
+        org_img = image.resize((416,416))
+        # img = cv2.cvtColor(org_img, cv2.COLOR_BGR2RGB).transpose(2, 0, 1)
+        img = org_img.convert("RGB")
+        img = np.array(img).transpose(2, 0, 1)
         img = img.astype(dtype=np.float32)  # onnx模型的类型是type: float32[ , , , ]
         img /= 255.0
         img = np.expand_dims(img, axis=0) # [3, 640, 640]扩展为[1, 3, 640, 640]
@@ -216,12 +226,14 @@ class ONNX:
             if draw:
                 org_img = self.draw(org_img, boxes)
                 # cv2.imshow('result', org_img)
-                cv2.imwrite('result.png', org_img)
+                # cv2.imwrite('result.png', org_img)
+                org_img.save('result.png')
                 # cv2.waitKey(0)
             return int(boxes[..., :4].astype(np.int32)[0][0])
 
 if __name__ == "__main__":
     onnx = ONNX()
-    img_path="background0.png"
-    img = cv2.imread(img_path)
+    img_path="../assets/background.png"
+    # img = cv2.imread(img_path)
+    img = Image.open(img_path)
     print(onnx.get_distance(img,True))

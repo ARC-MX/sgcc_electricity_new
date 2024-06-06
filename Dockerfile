@@ -20,6 +20,7 @@ RUN cd /tmp \
     && pip config --global set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple \
     && pip config --global set install.trusted-host pypi.tuna.tsinghua.edu.cn \
     && python3 -m pip install --upgrade pip \
+    && PIP_ROOT_USER_ACTION=ignore pip install onnxruntime==1.17.3 \
     && PIP_ROOT_USER_ACTION=ignore pip install \
     --disable-pip-version-check \
     --no-cache-dir \

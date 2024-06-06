@@ -23,7 +23,9 @@ from selenium.webdriver.support.wait import WebDriverWait
 from const import *
 
 import numpy as np
-import cv2
+# import cv2
+from io import BytesIO
+from PIL import Image
 from onnx import ONNX
 import platform
 
@@ -75,45 +77,52 @@ def _get_tracks(distance):
     logging.info(f"image tracks distance is {sum(tracks)}")
     return tracks 
 
-# cv2转base64
-def cv2_to_base64(img):
-    img = cv2.imencode('.jpg', img)[1]
-    image_code = str(base64.b64encode(img))[2:-1]
-
-    return image_code
-
-# base64转cv2
-def base64_to_cv2(base64_code):
-    img_data = base64.b64decode(base64_code)
-    img_array = np.fromstring(img_data, np.uint8)
-    img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+def base64_to_PLI(base64_str: str):
+    base64_data = re.sub('^data:image/.+;base64,', '', base64_str)
+    byte_data = base64.b64decode(base64_data)
+    image_data = BytesIO(byte_data)
+    img = Image.open(image_data)
     return img
 
-def bytes2cv(img):
-    '''二进制图片转cv2
+# # cv2转base64
+# def cv2_to_base64(img):
+#     img = cv2.imencode('.jpg', img)[1]
+#     image_code = str(base64.b64encode(img))[2:-1]
 
-    :param im: 二进制图片数据，bytes
-    :return: cv2图像，numpy.ndarray
-    '''
-    img_array = np.fromstring(img, np.uint8)  # 转换np序列
-    img_raw = cv2.imdecode(img_array, cv2.IMREAD_UNCHANGED)  # 转换Opencv格式BGR
-    return img_raw
+#     return image_code
 
-def cv2bytes(im):
-    '''cv2转二进制图片
+# # base64转cv2
+# def base64_to_cv2(base64_code):
+#     img_data = base64.b64decode(base64_code)
+#     img_array = np.fromstring(img_data, np.uint8)
+#     img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+#     return img
 
-    :param im: cv2图像，numpy.ndarray
-    :return: 二进制图片数据，bytes
-    '''
-    return np.array(cv2.imencode('.png', im)[1]).tobytes()
+# def bytes2cv(img):
+#     '''二进制图片转cv2
 
-def cv2_crop(im, box):
-    '''cv2实现类似PIL的裁剪
+#     :param im: 二进制图片数据，bytes
+#     :return: cv2图像，numpy.ndarray
+#     '''
+#     img_array = np.fromstring(img, np.uint8)  # 转换np序列
+#     img_raw = cv2.imdecode(img_array, cv2.IMREAD_UNCHANGED)  # 转换Opencv格式BGR
+#     return img_raw
 
-    :param im: cv2加载好的图像
-    :param box: 裁剪的矩形，(left, upper, right, lower)元组
-    '''
-    return im.copy()[box[1]:box[3], box[0]:box[2], :]
+# def cv2bytes(im):
+#     '''cv2转二进制图片
+
+#     :param im: cv2图像，numpy.ndarray
+#     :return: 二进制图片数据，bytes
+#     '''
+#     return np.array(cv2.imencode('.png', im)[1]).tobytes()
+
+# def cv2_crop(im, box):
+#     '''cv2实现类似PIL的裁剪
+
+#     :param im: cv2加载好的图像
+#     :param box: 裁剪的矩形，(left, upper, right, lower)元组
+#     '''
+#     return im.copy()[box[1]:box[3], box[0]:box[2], :]
 
 def get_transparency_location(image):
     '''获取基于透明元素裁切图片的左上角、右下角坐标
@@ -305,14 +314,14 @@ class DataFetcher:
         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
         # swtich to username-password login page
         driver.find_element(By.CLASS_NAME, "user").click()
-        logging.info("find_element user.\r")
+        logging.info("find_element 'user'.\r")
         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
         # input username and password
         input_elements = driver.find_elements(By.CLASS_NAME, "el-input__inner")
         input_elements[0].send_keys(self._username)
-        logging.info("input_elements username :{self._username}.\r")
+        logging.info(f"input_elements username : {self._username}.\r")
         input_elements[1].send_keys(self._password)
-        logging.info("input_elements password :{self._password}.\r")
+        logging.info(f"input_elements password : {self._password}.\r")
         # click agree button
         self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[2]/div[1]/form/div[1]/div[3]/div/span[2]')
         logging.info("Click the Agree option.\r")
@@ -330,7 +339,7 @@ class DataFetcher:
             # get base64 image data
             im_info = driver.execute_script(background_JS) 
             background = im_info.split(',')[1]  
-            background_image = base64_to_cv2(background)
+            background_image = base64_to_PLI(background)
             logging.info(f"Get electricity canvas image successfully.\r")
             distance = self.onnx.get_distance(background_image)
             logging.info(f"Image CaptCHA distance is {distance}.\r")
