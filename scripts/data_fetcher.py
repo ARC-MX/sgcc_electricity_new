@@ -310,7 +310,7 @@ class DataFetcher:
     def _login(self, driver):
 
         driver.get(LOGIN_URL)
-        logging.info("Open LOGIN_URL:{LOGIN_URL}.\r")
+        logging.info(f"Open LOGIN_URL:{LOGIN_URL}\r")
         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
         # swtich to username-password login page
         driver.find_element(By.CLASS_NAME, "user").click()
@@ -319,9 +319,9 @@ class DataFetcher:
         # input username and password
         input_elements = driver.find_elements(By.CLASS_NAME, "el-input__inner")
         input_elements[0].send_keys(self._username)
-        logging.info(f"input_elements username : {self._username}.\r")
+        logging.info(f"input_elements username : {self._username}\r")
         input_elements[1].send_keys(self._password)
-        logging.info(f"input_elements password : {self._password}.\r")
+        logging.info(f"input_elements password : {self._password}\r")
         # click agree button
         self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[2]/div[1]/form/div[1]/div[3]/div/span[2]')
         logging.info("Click the Agree option.\r")

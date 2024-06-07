@@ -9,7 +9,6 @@ ARG TARGETARCH
 WORKDIR /app
 
 # COPY scripts/* /app/
-COPY ./requirements.txt /tmp/requirements.txt
 
 RUN apt-get --allow-releaseinfo-change update \
     && apt-get install -y --no-install-recommends jq chromium chromium-driver tzdata \
@@ -18,22 +17,29 @@ RUN apt-get --allow-releaseinfo-change update \
     && rm -rf /var/lib/apt/lists/*  \
     && apt-get clean
 
+# RUN cd /tmp \
+#     && python3 -m pip install --upgrade pip \
+    # && echo '#!/bin/bash\n \
+    # if [ "$TARGETARCH" = "arm" ]; then\n \
+    #     cd /tmp\n \
+    #     curl -O -L https://github.com/maxisoft/pytorch-arm/releases/download/v1.0.0/numpy-1.23.5-cp39-cp39-linux_armv7l.whl\n \
+    #     curl -v -o onnxruntime-1.16.0-cp39-cp39-linux_armv7l.whl https://github.com/nknytk/built-onnxruntime-for-raspberrypi-linux/blob/master/wheels/bullseye/onnxruntime-1.16.0-cp39-cp39-linux_armv7l.whl\n \
+    #     PIP_ROOT_USER_ACTION=ignore pip3 install numpy-1.23.5-cp39-cp39-linux_armv7l.whl\n \
+    #     PIP_ROOT_USER_ACTION=ignore pip3 install onnxruntime-1.16.0-cp39-cp39-linux_armv7l.whl\n \
+    # else\n \
+    #     cd /tmp\n \
+    #     PIP_ROOT_USER_ACTION=ignore pip3 install numpy==1.23.5 onnxruntime==1.17.3 \n \
+    # fi \n' > ./targetArch.sh \
+    # && bash ./targetArch.sh \
+    # && rm -rf /tmp/* \
+    # && pip cache purge \
+    # && rm -rf /var/lib/apt/lists/* \
+    # && rm -rf /var/log/*
+
+COPY ./requirements.txt /tmp/requirements.txt
+
 RUN cd /tmp \
-    && python3 -m pip install --upgrade pip 
-
-RUN if [${TARGETARCH} == "arm"]; then \
-        cd /tmp \
-        && curl -O -L https://github.com/nknytk/built-onnxruntime-for-raspberrypi-linux/blob/master/wheels/bullseye/onnxruntime-1.16.0-cp39-cp39-linux_armv7l.whl \
-        && PIP_ROOT_USER_ACTION=ignore pip3 install onnxruntime-1.16.0-cp39-cp39-linux_armv7l.whl \
-        && PIP_ROOT_USER_ACTION=ignore pip3 install cmake==3.14.3; \
-    fi 
-
-RUN if [${TARGETARCH} == "arm64"]; then \
-        cd /tmp \
-        && PIP_ROOT_USER_ACTION=ignore pip3 install onnxruntime==1.17.3; \
-    fi 
-
-RUN cd /tmp \
+    && python3 -m pip install --upgrade pip \
     && PIP_ROOT_USER_ACTION=ignore pip install \
     --disable-pip-version-check \
     --no-cache-dir \

@@ -36,7 +36,7 @@
 
 > - `linux/amd64`：适用于 x86-64（amd64）架构的 Linux 系统，例如windows电脑。
 > - `linux/arm64`：适用于 ARMv8 架构的 Linux 系统，例如树莓派3+，N1盒子等。
-> - `linux/armv7`，适用于 ARMv8 架构的 Linux 系统，例如树莓派2，玩客云等。
+> - `linux/armv7`，暂不提供 ARMv7 架构的 Linux 系统，例如树莓派2，玩客云等，主要原因是onnx-runtime没有armv7版本的库，用户可以参考 [https://github.com/nknytk/built-onnxruntime-for-raspberrypi-linux.git](https://github.com/nknytk/built-onnxruntime-for-raspberrypi-linux.git)自行安装库然后编译docker镜像。
 
 ## 二、实现流程
 
@@ -63,6 +63,8 @@
 
    ```bash
    git clone https://github.com/ARC-MX/sgcc_electricity_new.git
+   # 如果github网络环境不好的话可以使用国内镜像，完全同步的，个人推荐使用国内镜像
+   # git clone https://gitee.com/ARC-MX/sgcc_electricity_new.git
    cd sgcc_electricity_new
    ```
 3. 创建环境变量文件
@@ -109,6 +111,10 @@
    LOG_LEVEL="INFO" # 例如“DEBUG”可以查看出错情况
    ```
 4. 运行
+
+   我已经优化了镜像环境，将镜像的地址配置为阿里云，如果要使用docker hub的源可以将docker-compose.yml中
+   image: registry.cn-hangzhou.aliyuncs.com/arcw/sgcc_electricity:latest 改为 arcw/sgcc_electricity:latest
+   image: registry.cn-hangzhou.aliyuncs.com/arcw/mongo:4.4.18 改为 mongo:4.4.18
 
    ```bash
    docker compose up --build 

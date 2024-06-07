@@ -6,7 +6,7 @@ services:
       - .env
     depends_on:
       - mongo
-    image: arcw/sgcc_electricity:latest # armv8
+    image: registry.cn-hangzhou.aliyuncs.com/arcw/sgcc_electricity:latest # for use docker.io: arcw/sgcc_electricity:latest
     # build:
     #   context: .
     #   dockerfile: Dockerfile
@@ -22,6 +22,7 @@ services:
     command: python3 main.py 
   # 默认将近30天数据写入mongo数据库，方便查询
   mongo:
+    # image: registry.cn-hangzhou.aliyuncs.com/arcw/mongo:4.4.18 # for use docker.io:  mongo:4.4.18
     image: mongo:4.4.18
     restart: always
     container_name: mongo-for-sgcc

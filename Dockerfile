@@ -1,4 +1,4 @@
-FROM python:3.8-slim-buster as build
+FROM python:3.9-bullseye as build
 
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
