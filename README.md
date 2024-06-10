@@ -172,7 +172,7 @@
 template:
 
 # 参考文档： https://www.home-assistant.io/integrations/template
-
+```yml
 - trigger:
 
   - platform: event
@@ -260,6 +260,7 @@ template:
     state_class: total
     unit_of_measurement: "CNY"
     device_class: monetary
+```
 - 如果你有多个户号，每个户号参照[configuration.yaml](template/configuration.yaml)配置。
 
   **注：如果你有一个户号，在HA里就是以上实体名；****如果你有多个户号，实体名称还要加 “_户号”后缀，举例:sensor.last_electricity_usage_1234567890**
