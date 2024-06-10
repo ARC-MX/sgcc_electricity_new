@@ -169,10 +169,11 @@
 
 # 文件中只能有一个template
 
+```yml
 template:
 
 # 参考文档： https://www.home-assistant.io/integrations/template
-```yml
+
 - trigger:
 
   - platform: event
