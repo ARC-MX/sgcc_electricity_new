@@ -23,10 +23,19 @@
    | sensor.yearly_electricity_charge  | 今年总用电费用，单位元                                                |
    | sensor.month_electricity_usage    | 最近一天用电量，单位KWH、度。属性含present_date（查询电量代表的日期） |
    | sensor.month_electricity_charge   | 上月总用电费用，单位元     属性含present_date（查询电量代表的日期）   |
-2. 可选，近三十天每日用电量数据（mongodb数据库），例如：
+2. 可选，近三十天每日用电量数据（SQLite数据库）
+   数据库表名为 daily+userid ，在项目路径下有个homeassistant.db  的数据库文件就是；
+   如需查询可以用
 
-   ![image-20230731094609016](assets/image-20230731111508970.png)
+   ```
+   "SELECT * FROM dailyxxxxxxxx;"
+   ```
 
+   得到如下结果：
+
+<p align="center">
+<img src="assets/database.png" alt="mini-graph-card" width="400">
+</p>
 ## 一、适用范围
 
 1. 适用于除南方电网覆盖省份外的用户。即除广东、广西、云南、贵州、海南等省份的用户外，均可使用本应用获取电力、电费数据。
@@ -41,10 +50,6 @@
 ## 二、实现流程
 
 通过python的selenium包获取国家电网的数据，通过homeassistant的提供的[REST API](https://developers.home-assistant.io/docs/api/rest/)将采用POST请求将实体状态更新到homeassistant。
-
-<!-- 由于国家电网添加了滑动验证码登录验证，我这边采取了调用商业API的方式，没时间找靠谱的离线方案，（ddddocr识别准确率太低），如果后续找到靠谱的离线方案速度还可以的话我会考虑更新，暂时先这样吧。
-在线验证API的注册地址[http://www.ttshitu.com/user/soft.html](http://www.ttshitu.com/user/soft.html)，注册推荐码: [c611f7018fc74aa3b75c30584108c5c6](c611f7018fc74aa3b75c30584108c5c6)
-价格也不贵2块钱基本够大半年了。 -->
 
 国家电网添加了滑动验证码登录验证，我这边最早采取了调用商业API的方式，现在已经更新成了离线方案。利用Yolov3神经网络识别验证码，请大家放心使用。
 
@@ -112,7 +117,6 @@
 
    我已经优化了镜像环境，将镜像的地址配置为阿里云，如果要使用docker hub的源可以将docker-compose.yml中
    image: registry.cn-hangzhou.aliyuncs.com/arcw/sgcc_electricity:latest 改为 arcw/sgcc_electricity:latest
-   image: registry.cn-hangzhou.aliyuncs.com/arcw/mongo:4.4.18 改为 mongo:4.4.18
 
    ```bash
    docker compose up --build 
@@ -129,7 +133,7 @@
 6. 运行成功应该显示如下日志：
 
 ```bash
-  2024-06-06 16:00:43  [INFO    ] ---- 程序开始，当前仓库版本为1.3.3，仓库地址为https://github.com/ARC-MX/sgcc_electricity_new.git
+2024-06-06 16:00:43  [INFO    ] ---- 程序开始，当前仓库版本为1.x.x，仓库地址为https://github.com/ARC-MX/sgcc_electricity_new.git
 2024-06-06 16:00:43  [INFO    ] ---- enable_database_storage为false，不会储存到数据库
 2024-06-06 16:00:43  [INFO    ] ---- 当前登录的用户名为: xxxxxx，homeassistant地址为http://192.168.1.xx:8123/,程序将在每天00:00执行
 2024-06-06 16:00:43  [INFO    ] ---- 此次为首次运行，等待时间(FIRST_SLEEP_TIME)为10秒，可在.env中设置
@@ -261,9 +265,9 @@ template:
     device_class: monetary
 ```
 
-- 如果你有多个户号，每个户号参照[configuration.yaml](template/configuration.yaml)配置。
+如果你有多个户号，每个户号参照[configuration.yaml](template/configuration.yaml)配置。
 
-  **注：如果你有一个户号，在HA里就是以上实体名；****如果你有多个户号，实体名称还要加 “_户号”后缀，举例:sensor.last_electricity_usage_1234567890**
+- **注：如果你有一个户号，在HA里就是以上实体名；****如果你有多个户号，实体名称还要加 “_户号”后缀，举例:sensor.last_electricity_usage_1234567890**
 
 ❗️`<u>`**进行自定义操作之后，请使用带entity的实体。比如使用sensor.last_electricity_usage_entity_1234567890而不是sensor.last_electricity_usage_1234567890。**`</u>`
 
@@ -370,8 +374,12 @@ sensor:
 <img src="assets/WeiChatpay.png"  width=200/>
 </center>
 
+# 重要修改通知
+
+2024-06-13：SQLite替换MongoDB，原因是python自带SQLite3，不需要额外安装，也不再需要MongoDB镜像
+
 TO-DO
 
-- [ ] 增加离线滑动验证码识别方案
+- [X] 增加离线滑动验证码识别方案
 - [ ] 添加默认推送服务
 - [ ] 。。。

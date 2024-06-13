@@ -218,7 +218,7 @@ class DataFetcher:
             try:
                 # 创建表名
                 self.db_name = f"daily{user_id}"
-                sql = f"CREATE TABLE {self.db_name} (date DATE PRIMARY KEY NOT NULL, usage REAL NOT NULL)"
+                sql = f"CREATE TABLE {self.db_name} (date DATE PRIMARY KEY NOT NULL, usage REAL NOT NULL);"
                 self.connect.execute(sql)
                 logging.info(f"创建{self.db_name}成功")
             except BaseException as e:
