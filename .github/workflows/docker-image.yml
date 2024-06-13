@@ -28,7 +28,7 @@ jobs:
       run: |
         PLATFORMS=linux/arm64,linux/amd64
         DOCKER_IMAGE=arcw/sgcc_electricity
-        docker buildx build --platform $PLATFORMS -t $DOCKER_IMAGE:latest -t $DOCKER_IMAGE:1.4.0 --file Dockerfile-for-github-action --push .
+        docker buildx build --platform $PLATFORMS -t $DOCKER_IMAGE:latest -t $DOCKER_IMAGE:1.4.1 --file Dockerfile-for-github-action --push .
 
     # - name: pull Docker image
     #   run: |
@@ -41,4 +41,4 @@ jobs:
         echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.ALIYUN_USERNAME }} --password-stdin registry.cn-hangzhou.aliyuncs.com 
         PLATFORMS=linux/arm64,linux/amd64
         DOCKER_IMAGE=registry.cn-hangzhou.aliyuncs.com/arcw/sgcc_electricity
-        docker buildx build --platform $PLATFORMS -t $DOCKER_IMAGE:latest -t $DOCKER_IMAGE:1.4.0 --file Dockerfile-for-github-action --push .
+        docker buildx build --platform $PLATFORMS -t $DOCKER_IMAGE:latest -t $DOCKER_IMAGE:1.4.1 --file Dockerfile-for-github-action --push .

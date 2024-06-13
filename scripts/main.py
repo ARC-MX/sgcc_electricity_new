@@ -32,7 +32,7 @@ def main():
         sys.exit()
 
     logger_init(LOG_LEVEL)
-    logging.info("程序开始，当前仓库版本为1.3.3，仓库地址为https://github.com/ARC-MX/sgcc_electricity_new.git")
+    logging.info("程序开始，当前仓库版本为1.4.1，仓库地址为https://github.com/ARC-MX/sgcc_electricity_new.git")
 
     fetcher = DataFetcher(PHONE_NUMBER, PASSWORD)
     updator = SensorUpdator(HASS_URL, HASS_TOKEN)

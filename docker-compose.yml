@@ -4,8 +4,6 @@ services:
   app:
     env_file:
       - .env
-    depends_on:
-      - mongo
     image: registry.cn-hangzhou.aliyuncs.com/arcw/sgcc_electricity:latest # for use docker.io: arcw/sgcc_electricity:latest
     # build:
     #   context: .
@@ -20,21 +18,6 @@ services:
     volumes:
       - ./scripts:/app
     command: python3 main.py 
-  # 默认将近30天数据写入mongo数据库，方便查询
-  mongo:
-    # image: registry.cn-hangzhou.aliyuncs.com/arcw/mongo:4.4.18 # for use docker.io:  mongo:4.4.18
-    image: mongo:4.4.18
-    restart: always
-    container_name: mongo-for-sgcc
-    networks:
-      sgcc_network:
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root # USERNAME 修改为自己的用户名
-      MONGO_INITDB_ROOT_PASSWORD: root # PASSWORD 修改为自己的密码
-      MONGODB_DATABASE: "homeassistant" # 修改为自己的数据库名,和.env中的数据库名一致
-      CONTAINER_TIMEZONE: Asia/Shanghai
-    volumes:
-      - ./db:/data/db
 
 networks:
   sgcc_network:

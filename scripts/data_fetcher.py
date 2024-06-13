@@ -10,7 +10,7 @@ import base64
 import json
 import requests
 import dotenv
-import pymongo
+import sqlite3
 import undetected_chromedriver as uc
 
 from selenium import webdriver
@@ -187,12 +187,9 @@ class DataFetcher:
         if enable_database_storage:
             # 将数据存储到数据库
             logging.debug("enable_database_storage为true，将会储存到数据库")
-            self.test_mongodb_connection()
-            self.db = self.client[os.getenv("DB_NAME")] # 创建数据库
+            self.client = sqlite3.connect(os.getenv("DB_NAME"))
         else:
-            # 将数据存储到其他介质，如文件或内存
             self.client = None
-            self.db = None
             logging.info("enable_database_storage为false，不会储存到数据库")
 
         self.DRIVER_IMPLICITY_WAIT_TIME = int(os.getenv("DRIVER_IMPLICITY_WAIT_TIME"))
@@ -210,43 +207,36 @@ class DataFetcher:
             return result["message"]
         return ""
 
-    def test_mongodb_connection(self):
-        """测试数据库连接情况"""
-        try:
-            MONGO_URL = os.getenv("MONGO_URL")
-            # 创建 MongoDB 客户端
-            self.client = pymongo.MongoClient(MONGO_URL)
-
-            # 检查连接是否可用
-            self.client.admin.command('ping')
-
-            logging.info("MongoDB connection test successful")
-        except Exception as e:
-            logging.error("Failed to connect to MongoDB: " + str(e))
-
-    def connect_user_collection(self, user_id):
-        """创建数据库集合，collection_name = electricity_daily_usage_{user_id}
+    def connect_user_db(self, user_id):
+        """创建数据库集合，db_name = electricity_daily_usage_{user_id}
         :param user_id: 用户ID"""
-        # 创建集合
-        collection_name = f"electricity_daily_usage_{user_id}"
         try:
-            collection = self.db.create_collection(collection_name)
-            logging.info(f"集合: {collection_name} 创建成功")
-            self.create_col_index(collection)
-        # 如果集合已存在，则不会创建
-        except:
-            collection = self.db[collection_name]
-            logging.debug("集合: {collection_name} 集合已存在")
+            # 创建数据库
+            self.connect = self.client
+            self.connect.cursor()
+            logging.info(f"数据库: {os.getenv('DB_NAME')} 创建成功")
+            try:
+                # 创建表名
+                self.db_name = f"daily{user_id}"
+                sql = f"CREATE TABLE {self.db_name} (date DATE PRIMARY KEY NOT NULL, usage REAL NOT NULL)"
+                self.connect.execute(sql)
+                logging.info(f"创建{self.db_name}成功")
+            except BaseException as e:
+                logging.debug(f"表{self.db_name}已存在:{e}")
+        # 如果表已存在，则不会创建
+        except BaseException as e:
+            logging.debug(f"表: {self.db_name} 表已存在:{e}")
         finally:
-            return collection
+            return self.connect
 
-    def create_col_index(self, collection):
+    def insert_data(self, data:dict):
             # 创建索引
             try:
-                collection.create_index([('date', pymongo.DESCENDING)], unique=True)
-                logging.info(f"创建索引'date'成功")
-            except:
-                logging.debug("索引'date'已存在")
+                sql = f"INSERT OR REPLACE INTO {self.db_name} VALUES(strftime('%Y-%m-%d','{data['date']}'),{data['usage']});"
+                self.connect.execute(sql)
+                self.connect.commit()
+            except BaseException as e:
+                logging.debug(f"数据更新失败:{e}")
 
     def fetch(self):
         """the entry, only retry logic here """
@@ -310,7 +300,7 @@ class DataFetcher:
     def _login(self, driver):
 
         driver.get(LOGIN_URL)
-        logging.info(f"Open LOGIN_URL:{LOGIN_URL}\r")
+        logging.info("Open LOGIN_URL:{LOGIN_URL}.\r")
         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
         # swtich to username-password login page
         driver.find_element(By.CLASS_NAME, "user").click()
@@ -319,9 +309,9 @@ class DataFetcher:
         # input username and password
         input_elements = driver.find_elements(By.CLASS_NAME, "el-input__inner")
         input_elements[0].send_keys(self._username)
-        logging.info(f"input_elements username : {self._username}\r")
+        logging.info(f"input_elements username : {self._username}.\r")
         input_elements[1].send_keys(self._password)
-        logging.info(f"input_elements password : {self._password}\r")
+        logging.info(f"input_elements password : {self._password}.\r")
         # click agree button
         self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[2]/div[1]/form/div[1]/div[3]/div/span[2]')
         logging.info("Click the Agree option.\r")
@@ -368,7 +358,6 @@ class DataFetcher:
             "Login failed, maybe caused by 1.incorrect phone_number and password, please double check. or 2. network, please mnodify LOGIN_EXPECTED_TIME in .env and run docker compose up --build.")
         return True
         
-
     def _get_electric_balances(self, driver, user_id_list):
 
         balance_list = []
@@ -390,8 +379,7 @@ class DataFetcher:
             if (i != len(user_id_list)):
                 self._click_button(driver, By.CLASS_NAME, "el-input__suffix")
                 time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
-                self._click_button(driver, By.XPATH,
-                                   f"//ul[@class='el-scrollbar__view el-select-dropdown__list']/li[{i + 1}]")
+                self._click_button(driver, By.XPATH, f"//ul[@class='el-scrollbar__view el-select-dropdown__list']/li[{i + 1}]")
 
         return balance_list
 
@@ -569,7 +557,7 @@ class DataFetcher:
 
 
         # 连接数据库集合
-        collection = self.connect_user_collection(user_id)
+        self.connect_user_db(user_id)
 
         # 将30天的用电量保存为字典
         for i in days_element:
@@ -578,10 +566,12 @@ class DataFetcher:
             dic = {'date': day, 'usage': float(usage)}
             # 插入到数据库
             try:
-                collection.insert_one(dic)
+                self.insert_data(dic)
                 logging.info(f"{day}的用电量{usage}KWh已经成功存入数据库")
             except:
                 logging.debug(f"{day}的用电量存入数据库失败,可能已经存在")
+        
+        self.connect.close()
 
     @staticmethod
     def _click_button(driver, button_search_type, button_search_key):
