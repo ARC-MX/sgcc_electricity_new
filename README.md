@@ -82,14 +82,12 @@
    PHONE_NUMBER="xxx" # 修改为自己的登录账号
    PASSWORD="xxxx" # 修改为自己的登录密码
 
-   # 图鉴OCR识别账户信息
-      TUJIAN_UNAME="xxx" # 修改为自己的登录账号
-   TUJIAN_PASSWORD="xxx" # 修改为自己的登录密码
-   # 数据库配置
-   ENABLE_DATABASE_STORAGE=True # or False 不启用数据库储存每日用电量数据。
-   # 数据库可以填已有的mongodb数据库
-   MONGO_URL="mongodb://USERNAME:PASSWORD@mongo-for-sgcc:27017/" # 数据库地址 修改USERNAME PASSWORD和mongo-for-sgcc和mongo容器名称一致 
-   DB_NAME="homeassistant" # 数据库名，默认为homeassistant
+
+   # SQLite 数据库配置
+   # True or False 不启用数据库储存每日用电量数据。
+   ENABLE_DATABASE_STORAGE=True
+   # 数据库名，默认为homeassistant.db
+   DB_NAME="homeassistant.db"
    # COLLECTION_NAME默认为electricity_daily_usage_{国网用户id}，不支持修改。
 
    # homeassistant配置
@@ -169,6 +167,7 @@
 
 # 文件中只能有一个template
 
+```yml
 template:
 
 # 参考文档： https://www.home-assistant.io/integrations/template
@@ -260,6 +259,8 @@ template:
     state_class: total
     unit_of_measurement: "CNY"
     device_class: monetary
+```
+
 - 如果你有多个户号，每个户号参照[configuration.yaml](template/configuration.yaml)配置。
 
   **注：如果你有一个户号，在HA里就是以上实体名；****如果你有多个户号，实体名称还要加 “_户号”后缀，举例:sensor.last_electricity_usage_1234567890**
