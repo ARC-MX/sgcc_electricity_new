@@ -30,10 +30,42 @@ template:
         device_class: energy
 
   - trigger:
+    - platform: event
+      event_type: "state_changed"
+      event_data:
+      entity_id: sensor.month_electricity_usage_户号
+    sensor:
+      - name: month_electricity_usage_entity_户号
+        unique_id: month_electricity_usage_entity_户号
+        state: "{{ states('sensor.month_electricity_usage_户号') }}"
+        attributes:
+          present_date: "{{ state_attr('sensor.month_electricity_usage_户号', 'present_date') }}"
+          last_updated: "{{ state_attr('sensor.month_electricity_usage_户号', 'month_updated') }}"
+        state_class: measurement
+        unit_of_measurement: "kWh"
+        device_class: energy
+
+  - trigger:
+    - platform: event
+      event_type: "state_changed"
+      event_data:
+      entity_id: sensor.month_electricity_charge_户号
+    sensor:
+      - name: month_electricity_charge_entity_户号
+        unique_id: month_electricity_charge_entity_户号
+        state: "{{ states('sensor.month_electricity_charge_户号') }}"
+        attributes:
+          present_date: "{{ state_attr('sensor.month_electricity_charge_户号', 'present_date') }}"
+          last_updated: "{{ state_attr('sensor.month_electricity_charge_户号', 'month_updated') }}"
+        state_class: measurement
+        unit_of_measurement: "CNY"
+        device_class: monetary
+
+  - trigger:
       - platform: event
         event_type: "state_changed"
         event_data:
-          entity_id: sensor.yearly_electricity_usage
+          entity_id: sensor.yearly_electricity_usage_户号
     sensor:
       - name: yearly_electricity_usage_entity_户号
         unique_id: yearly_electricity_usage_entity_户号
