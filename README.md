@@ -1,4 +1,10 @@
 **重要说明：**原作者@renhai-lab 已于2023年10将项目归档，原仓库不再更新。这个版本是在原仓库基础上更新的。在此向原作者表达谢意和致敬。验证码识别已经从最开始的在线商业API替换成离线神经网络检测版本，请使用本仓库的同学点个小星星，或者打赏鼓励。
+### 支付宝&微信 打赏码
+
+<p align="center">
+<img src="assets/Alipay.png"  width=200 style="margin-right: 70px";/>
+<img src="assets/WeiChatpay.png"  width=200/>
+</p>
 
 # ⚡️国家电网电力获取
 
@@ -360,23 +366,17 @@ sensor:
 
 - 增加近30天每日电量写入数据库（默认mongodb），其他数据库请自行配置。
   - 添加配置默认增加近 7 天每日电量写入数据, 可修改为 30 天, 因为国网目前[「要签约智能交费才能看到30天的数据，不然就只能看到7天的」](https://github.com/ARC-MX/sgcc_electricity_new/issues/11#issuecomment-2158973048)
-- 将间歇执行设置为定时执行: JOB_START_TIME，24小时制，例如"07:00”则为每天早上7点执行，第一次启动程序如果时间晚于早上7点则会立即执行一次。
+- 将间歇执行设置为定时执行: JOB_START_TIME，24小时制，例如"07:00”则为每天早上7点执行，第一次启动程序立即执行一次, 每12小时执行一次 
 - 给last_daily_usage增加present_date，用来确定更新的是哪一天的电量。一般查询的日期会晚一到两天。
 - 对configuration.yaml中自定义实体部分修改。
 
-# 支付宝&微信 打赏码
-
-<center class="half">
-<img src="assets/Alipay.png"  width=200 style="margin-right: 70px";/>
-<img src="assets/WeiChatpay.png"  width=200/>
-</center>
 
 # 重要修改通知
 
-2024-06-13：SQLite替换MongoDB，原因是python自带SQLite3，不需要额外安装，也不再需要MongoDB镜像
-
+2024-06-13：SQLite替换MongoDB，原因是python自带SQLite3，不需要额外安装，也不再需要MongoDB镜像。
+2024-07-03：新增每天定时执行两次，添加配置默认增加近 7 天每日电量写入数据, 可修改为 30 天。
 TO-DO
 
 - [X] 增加离线滑动验证码识别方案
-- [ ] 添加默认推送服务
+- [ ] 添加默认推送服务，电费余额不足提醒
 - [ ] 。。。

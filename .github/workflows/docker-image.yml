@@ -14,7 +14,8 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-
+    env:
+      VERSION: v1.4.2
     steps:
     - uses: actions/checkout@v3
 
@@ -24,21 +25,15 @@ jobs:
     - name: Log into docker hub registry
       run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin 
 
+
     - name: Build and push Docker image
       run: |
         PLATFORMS=linux/arm64,linux/amd64
         DOCKER_IMAGE=arcw/sgcc_electricity
-        docker buildx build --platform $PLATFORMS -t $DOCKER_IMAGE:latest -t $DOCKER_IMAGE:1.4.1 --file Dockerfile-for-github-action --push .
-
-    # - name: pull Docker image
-    #   run: |
-    #     # PLATFORMS=linux/arm64,linux/amd64
-    #     docker pull --platform $PLATFORMS mongo:4.4.18
-    #     docker tag mongo:4.4.18 registry.cn-hangzhou.aliyuncs.com/arcw/mongo:4.4.18
+        docker buildx build --build-arg VERSION=${{env.VERSION }} --platform $PLATFORMS -t $DOCKER_IMAGE:latest -t $DOCKER_IMAGE:${{env.VERSION }} --file Dockerfile-for-github-action --push .
 
     - name: Log into Aliyun hub registry and push Docker image
       run: |
-        echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.ALIYUN_USERNAME }} --password-stdin registry.cn-hangzhou.aliyuncs.com 
         PLATFORMS=linux/arm64,linux/amd64
-        DOCKER_IMAGE=registry.cn-hangzhou.aliyuncs.com/arcw/sgcc_electricity
-        docker buildx build --platform $PLATFORMS -t $DOCKER_IMAGE:latest -t $DOCKER_IMAGE:1.4.1 --file Dockerfile-for-github-action --push .
+        DOCKER_IMAGE=arcw/sgcc_electricity
+        docker buildx build --build-arg VERSION=${{env.VERSION }} --platform $PLATFORMS -t $DOCKER_IMAGE:latest -t $DOCKER_IMAGE:${{env.VERSION }} --file Dockerfile-for-github-action --push .
