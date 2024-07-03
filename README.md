@@ -173,95 +173,92 @@
 
 ```yml
 template:
+  - trigger:
+      - platform: event
+        event_type: state_changed
+        event_data:
+          entity_id: sensor.electricity_charge_balance
+    sensor:
+      - name: electricity_charge_balance_entity
+        unique_id: electricity_charge_balance_entity
+        state: "{{ states('sensor.electricity_charge_balance') }}"
+        state_class: total
+        unit_of_measurement: "CNY"
+        device_class: monetary
 
-# 参考文档： https://www.home-assistant.io/integrations/template
+  - trigger:
+      - platform: event
+        event_type: state_changed
+        event_data:
+          entity_id: sensor.last_electricity_usage
+    sensor:
+      - name: last_electricity_usage_entity
+        unique_id: last_electricity_usage_entity
+        state: "{{ states('sensor.last_electricity_usage') }}"
+        attributes:
+          present_date: "{{ state_attr('sensor.last_electricity_usage', 'present_date') }}"
+          last_updated: "{{ state_attr('sensor.last_electricity_usage', 'last_updated') }}"
+        state_class: measurement
+        unit_of_measurement: "kWh"
+        device_class: energy
 
-- trigger:
-  - platform: event
-    event_type: "state_changed"
-    event_data:
-    entity_id: sensor.electricity_charge_balance
-  sensor:
-    - name: electricity_charge_balance_entity
-      unique_id: electricity_charge_balance_entity
-      state: "{{ states('sensor.electricity_charge_balance') }}"
-      state_class: total
-      unit_of_measurement: "CNY"
-      device_class: monetary
+  - trigger:
+      - platform: event
+        event_type: state_changed
+        event_data:
+          entity_id: sensor.month_electricity_usage
+    sensor:
+      - name: month_electricity_usage_entity
+        unique_id: month_electricity_usage_entity
+        state: "{{ states('sensor.month_electricity_usage') }}"
+        attributes:
+          present_date: "{{ state_attr('sensor.month_electricity_usage', 'present_date') }}"
+          last_updated: "{{ state_attr('sensor.month_electricity_usage', 'month_updated') }}"
+        state_class: measurement
+        unit_of_measurement: "kWh"
+        device_class: energy
 
-- trigger:
-  - platform: event
-    event_type: "state_changed"
-    event_data:
-    entity_id: sensor.last_electricity_usage
-  sensor:
-    - name: last_electricity_usage_entity
-      unique_id: last_electricity_usage_entity
-      state: "{{ states('sensor.last_electricity_usage') }}"
-      attributes:
-        present_date: "{{ state_attr('sensor.last_electricity_usage', 'present_date') }}"
-        last_updated: "{{ state_attr('sensor.last_electricity_usage', 'last_updated') }}"
-      state_class: measurement
-      unit_of_measurement: "kWh"
-      device_class: energy
+  - trigger:
+      - platform: event
+        event_type: state_changed
+        event_data:
+          entity_id: sensor.month_electricity_charge
+    sensor:
+      - name: month_electricity_charge_entity
+        unique_id: month_electricity_charge_entity
+        state: "{{ states('sensor.month_electricity_charge') }}"
+        attributes:
+          present_date: "{{ state_attr('sensor.month_electricity_charge', 'present_date') }}"
+          last_updated: "{{ state_attr('sensor.month_electricity_charge', 'month_updated') }}"
+        state_class: measurement
+        unit_of_measurement: "CNY"
+        device_class: monetary
 
-- trigger:
-  - platform: event
-    event_type: "state_changed"
-    event_data:
-    entity_id: sensor.month_electricity_usage
-  sensor:
-    - name: month_electricity_usage_entity
-      unique_id: month_electricity_usage_entity
-      state: "{{ states('sensor.month_electricity_usage') }}"
-      attributes:
-        present_date: "{{ state_attr('sensor.month_electricity_usage', 'present_date') }}"
-        last_updated: "{{ state_attr('sensor.month_electricity_usage', 'month_updated') }}"
-      state_class: measurement
-      unit_of_measurement: "kWh"
-      device_class: energy
+  - trigger:
+      - platform: event
+        event_type: state_changed
+        event_data:
+          entity_id: sensor.yearly_electricity_usage
+    sensor:
+      - name: yearly_electricity_usage_entity
+        unique_id: yearly_electricity_usage_entity
+        state: "{{ states('sensor.yearly_electricity_usage') }}"
+        state_class: total
+        unit_of_measurement: "kWh"
+        device_class: energy
 
-- trigger:
-  - platform: event
-    event_type: "state_changed"
-    event_data:
-    entity_id: sensor.month_electricity_charge
-  sensor:
-    - name: month_electricity_charge_entity
-      unique_id: month_electricity_charge_entity
-      state: "{{ states('sensor.month_electricity_charge') }}"
-      attributes:
-        present_date: "{{ state_attr('sensor.month_electricity_charge', 'present_date') }}"
-        last_updated: "{{ state_attr('sensor.month_electricity_charge', 'month_updated') }}"
-      state_class: measurement
-      unit_of_measurement: "CNY"
-      device_class: monetary
-
-- trigger:
-  - platform: event
-    event_type: "state_changed"
-    event_data:
-    entity_id: sensor.yearly_electricity_usage
-  sensor:
-    - name: yearly_electricity_usage_entity
-      unique_id: yearly_electricity_usage_entity
-      state: "{{ states('sensor.yearly_electricity_usage') }}"
-      state_class: total
-      unit_of_measurement: "kWh"
-      device_class: energy
-
-- trigger:
-  - platform: event
-    event_type: "state_changed"
-    event_data:
-    entity_id: sensor.yearly_electricity_charge
-  sensor:
-    - name: yearly_electricity_charge_entity
-      unique_id: yearly_electricity_charge_entity
-      state: "{{ states('sensor.yearly_electricity_charge') }}"
-      state_class: total
-      unit_of_measurement: "CNY"
-      device_class: monetary
+  - trigger:
+      - platform: event
+        event_type: state_changed
+        event_data:
+          entity_id: sensor.yearly_electricity_charge
+    sensor:
+      - name: yearly_electricity_charge_entity
+        unique_id: yearly_electricity_charge_entity
+        state: "{{ states('sensor.yearly_electricity_charge') }}"
+        state_class: total
+        unit_of_measurement: "CNY"
+        device_class: monetary
 ```
 
 如果你有多个户号，每个户号参照[configuration.yaml](template/configuration.yaml)配置。
@@ -362,6 +359,7 @@ sensor:
 增加的部分：
 
 - 增加近30天每日电量写入数据库（默认mongodb），其他数据库请自行配置。
+  - 添加配置默认增加近 7 天每日电量写入数据, 可修改为 30 天, 因为国网目前[「要签约智能交费才能看到30天的数据，不然就只能看到7天的」](https://github.com/ARC-MX/sgcc_electricity_new/issues/11#issuecomment-2158973048)
 - 将间歇执行设置为定时执行: JOB_START_TIME，24小时制，例如"07:00”则为每天早上7点执行，第一次启动程序如果时间晚于早上7点则会立即执行一次。
 - 给last_daily_usage增加present_date，用来确定更新的是哪一天的电量。一般查询的日期会晚一到两天。
 - 对configuration.yaml中自定义实体部分修改。

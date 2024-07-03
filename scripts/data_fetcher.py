@@ -421,9 +421,9 @@ class DataFetcher:
             # get yesterday usage
             last_daily_datetime, last_daily_usage = self._get_yesterday_usage(driver)
 
-            # 新增储存30天用电量
+            # 新增储存用电量
             if self.client is not None:
-                self.save_30_days_usage(driver, user_id_list[i - 1])
+                self.save_usage_data(driver, user_id_list[i - 1])
 
             if last_daily_usage is None:
                 logging.error(f"Get daily power consumption for {user_id_list[i - 1]} failed, pass")
@@ -542,24 +542,35 @@ class DataFetcher:
         except:
             return None,None,None
 
-    # 增加储存30天用电量的到mongodb的函数
-    def save_30_days_usage(self, driver, user_id):
-        """储存30天用电量"""
-        self._click_button(driver, By.XPATH, "//*[@id='pane-second']/div[1]/div/label[2]/span[1]")
+    # 增加储存用电量的到mongodb的函数
+    def save_usage_data(self, driver, user_id):
+        """储存指定天数的用电量"""
+        retention_days = int(os.getenv("DATA_RETENTION_DAYS", 7))  # 默认值为7天
+
+        # 7 天在第一个 label, 30 天 开通了智能缴费之后才会出现在第二个, (sb sgcc)
+        if retention_days == 7:
+            self._click_button(driver, By.XPATH, "//*[@id='pane-second']/div[1]/div/label[1]/span[1]")
+        elif retention_days == 30:
+            self._click_button(driver, By.XPATH, "//*[@id='pane-second']/div[1]/div/label[2]/span[1]")
+        else:
+            logging.error(f"Unsupported retention days value: {retention_days}")
+            return
+
         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
-        # 等待30天用电量的数据出现
+
+        # 等待用电量的数据出现
         usage_element = driver.find_element(By.XPATH,
                                             "//div[@class='el-tab-pane dayd']//div[@class='el-table__body-wrapper is-scrolling-none']/table/tbody/tr[1]/td[2]/div")
         WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(EC.visibility_of(usage_element))
-        # 30天用电量的数据
-        days_element = driver.find_elements(By.XPATH,
-                                            "//*[@id='pane-second']/div[2]/div[2]/div[1]/div[3]/table/tbody/tr")  # 30天的值 列表 2023-05-0511.98
 
+        # 获取用电量的数据
+        days_element = driver.find_elements(By.XPATH,
+                                            "//*[@id='pane-second']/div[2]/div[2]/div[1]/div[3]/table/tbody/tr")  # 用电量值列表
 
         # 连接数据库集合
         self.connect_user_db(user_id)
 
-        # 将30天的用电量保存为字典
+        # 将用电量保存为字典
         for i in days_element:
             day = i.find_element(By.XPATH, "td[1]/div").text
             usage = i.find_element(By.XPATH, "td[2]/div").text
@@ -568,9 +579,9 @@ class DataFetcher:
             try:
                 self.insert_data(dic)
                 logging.info(f"{day}的用电量{usage}KWh已经成功存入数据库")
-            except:
-                logging.debug(f"{day}的用电量存入数据库失败,可能已经存在")
-        
+            except Exception as e:
+                logging.debug(f"{day}的用电量存入数据库失败,可能已经存在: {str(e)}")
+
         self.connect.close()
 
     @staticmethod
