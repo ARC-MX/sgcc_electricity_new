@@ -186,11 +186,11 @@ class DataFetcher:
 
         if enable_database_storage:
             # 将数据存储到数据库
-            logging.debug("enable_database_storage为true，将会储存到数据库")
+            logging.debug("enable_database_storage is true, we will store the data to the database.")
             self.client = sqlite3.connect(os.getenv("DB_NAME"))
         else:
             self.client = None
-            logging.info("enable_database_storage为false，不会储存到数据库")
+            logging.info("enable_database_storage is false, we will not store the data to the database.")
 
         self.DRIVER_IMPLICITY_WAIT_TIME = int(os.getenv("DRIVER_IMPLICITY_WAIT_TIME"))
         self.RETRY_TIMES_LIMIT = int(os.getenv("RETRY_TIMES_LIMIT"))
@@ -214,18 +214,18 @@ class DataFetcher:
             # 创建数据库
             self.connect = self.client
             self.connect.cursor()
-            logging.info(f"数据库: {os.getenv('DB_NAME')} 创建成功")
+            logging.info(f"Database of {os.getenv('DB_NAME')} created successfully.")
             try:
                 # 创建表名
                 self.db_name = f"daily{user_id}"
                 sql = f"CREATE TABLE {self.db_name} (date DATE PRIMARY KEY NOT NULL, usage REAL NOT NULL);"
                 self.connect.execute(sql)
-                logging.info(f"创建{self.db_name}成功")
+                logging.info(f"Table {self.db_name} created successfully")
             except BaseException as e:
-                logging.debug(f"表{self.db_name}已存在:{e}")
+                logging.debug(f"Table {self.db_name} already exists: {e}")
         # 如果表已存在，则不会创建
         except BaseException as e:
-            logging.debug(f"表: {self.db_name} 表已存在:{e}")
+            logging.debug(f"Table: {self.db_name} already exists:{e}")
         finally:
             return self.connect
 
@@ -236,7 +236,7 @@ class DataFetcher:
                 self.connect.execute(sql)
                 self.connect.commit()
             except BaseException as e:
-                logging.debug(f"数据更新失败:{e}")
+                logging.debug(f"Data update failed: {e}")
 
     def fetch(self):
         """the entry, only retry logic here """
@@ -269,7 +269,7 @@ class DataFetcher:
             logging.info(f"Login successfully on {LOGIN_URL}")
             time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
             user_id_list = self._get_user_ids(driver)
-            logging.info(f"将获取{len(user_id_list)}户数据，user_id: {user_id_list}")
+            logging.info(f"There are {len(user_id_list)} users in total, there user_id is: {user_id_list}")
             time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
             balance_list = self._get_electric_balances(driver, user_id_list)  #
             time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
@@ -279,7 +279,6 @@ class DataFetcher:
             driver.quit()
 
             logging.info("Webdriver quit after fetching data successfully.")
-            logging.info("浏览器已退出")
             return user_id_list, balance_list, last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list, month_list, month_usage_list, month_charge_list 
 
         finally:
@@ -300,7 +299,7 @@ class DataFetcher:
     def _login(self, driver):
 
         driver.get(LOGIN_URL)
-        logging.info("Open LOGIN_URL:{LOGIN_URL}.\r")
+        logging.info(f"Open LOGIN_URL:{LOGIN_URL}.\r")
         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
         # swtich to username-password login page
         driver.find_element(By.CLASS_NAME, "user").click()
@@ -578,9 +577,9 @@ class DataFetcher:
             # 插入到数据库
             try:
                 self.insert_data(dic)
-                logging.info(f"{day}的用电量{usage}KWh已经成功存入数据库")
+                logging.info(f"The electricity consumption of {usage}KWh on {day} has been successfully deposited into the database")
             except Exception as e:
-                logging.debug(f"{day}的用电量存入数据库失败,可能已经存在: {str(e)}")
+                logging.debug(f"The electricity consumption of {day} failed to save to the database, which may already exist: {str(e)}")
 
         self.connect.close()
 

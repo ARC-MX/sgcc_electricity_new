@@ -220,7 +220,7 @@ class ONNX:
         prediction, org_img = self._inference(image)
         boxes = self.get_boxes(prediction=prediction)
         if len(boxes) == 0:
-            print('没有发现物体')
+            print('No gaps were detected.')
             return 0
         else:
             if draw:

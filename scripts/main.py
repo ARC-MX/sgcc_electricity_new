@@ -4,7 +4,7 @@ import os
 import sys
 import time
 import traceback
-from datetime import datetime
+from datetime import datetime,timedelta
 
 import dotenv
 import schedule
@@ -16,7 +16,7 @@ from sensor_updator import SensorUpdator
 
 def main():
     # 读取 .env 文件
-    dotenv.load_dotenv()
+    dotenv.load_dotenv(verbose=True)
 
     try:
         PHONE_NUMBER = os.getenv("PHONE_NUMBER")
@@ -24,28 +24,25 @@ def main():
         HASS_URL = os.getenv("HASS_URL")
         HASS_TOKEN = os.getenv("HASS_TOKEN")
         JOB_START_TIME = os.getenv("JOB_START_TIME")
-        FIRST_SLEEP_TIME = int(os.getenv("FIRST_SLEEP_TIME"))
         LOG_LEVEL = os.getenv("LOG_LEVEL")
+        VERSION = os.getenv("VERSION")
 
     except Exception as e:
-        logging.error(f"读取.env文件失败，程序将退出，错误信息为{e}")
+        logging.error(f"Failing to read the .env file, the program will exit with an error message: {e}.")
         sys.exit()
 
     logger_init(LOG_LEVEL)
-    logging.info("程序开始，当前仓库版本为1.4.1，仓库地址为https://github.com/ARC-MX/sgcc_electricity_new.git")
+    logging.info(f"The current repository version is {VERSION}, and the repository address is https://github.com/ARC-MX/sgcc_electricity_new.git")
 
     fetcher = DataFetcher(PHONE_NUMBER, PASSWORD)
     updator = SensorUpdator(HASS_URL, HASS_TOKEN)
-    logging.info(f"当前登录的用户名为: {PHONE_NUMBER}，homeassistant地址为{HASS_URL},程序将在每天{JOB_START_TIME}执行")
-    schedule.every().day.at(JOB_START_TIME).do(run_task, fetcher, updator)
+    logging.info(f"The current logged-in user name is {PHONE_NUMBER}, the homeassistant address is {HASS_URL}, and the program will be executed every day at {JOB_START_TIME}.")
 
-    if datetime.now().time() < datetime.strptime(JOB_START_TIME, "%H:%M").time():
-        logging.info(f"此次为首次运行，当前时间早于 JOB_START_TIME: {JOB_START_TIME}，{JOB_START_TIME}再执行！")
-        schedule.every().day.at(JOB_START_TIME).do(run_task, fetcher, updator)
-    else:
-        logging.info(f"此次为首次运行，等待时间(FIRST_SLEEP_TIME)为{FIRST_SLEEP_TIME}秒，可在.env中设置")
-        time.sleep(FIRST_SLEEP_TIME)
-        run_task(fetcher, updator)
+    next_run_time = datetime.strptime(JOB_START_TIME, "%H:%M") + timedelta(hours=12)
+    logging.info(f'Run job now! The next run will be at {JOB_START_TIME} and {next_run_time.strftime("%H:%M")} every day')
+    schedule.every().day.at(JOB_START_TIME).do(run_task, fetcher, updator)
+    schedule.every().day.at(next_run_time.strftime("%H:%M")).do(run_task, fetcher, updator)
+    run_task(fetcher, updator)
 
     while True:
         schedule.run_pending()
