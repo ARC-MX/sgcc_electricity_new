@@ -1,5 +1,6 @@
 import logging
 import logging.config
+import requests
 import os
 import sys
 import time
@@ -13,11 +14,15 @@ from const import *
 from data_fetcher import DataFetcher
 from sensor_updator import SensorUpdator
 
-
+BALANCE = 0.0
+PUSHPLUS_TOKEN = []
+RECHARGE_NOTIFY = False
 def main():
     # 读取 .env 文件
     dotenv.load_dotenv(verbose=True)
-
+    global BALANCE
+    global PUSHPLUS_TOKEN
+    global RECHARGE_NOTIFY
     try:
         PHONE_NUMBER = os.getenv("PHONE_NUMBER")
         PASSWORD = os.getenv("PASSWORD")
@@ -26,7 +31,9 @@ def main():
         JOB_START_TIME = os.getenv("JOB_START_TIME")
         LOG_LEVEL = os.getenv("LOG_LEVEL")
         VERSION = os.getenv("VERSION")
-
+        BALANCE = float(os.getenv("BALANCE"))
+        PUSHPLUS_TOKEN = os.getenv("PUSHPLUS_TOKEN").split(",")
+        RECHARGE_NOTIFY = os.getenv("RECHARGE_NOTIFY", "false").lower() == "true"
     except Exception as e:
         logging.error(f"Failing to read the .env file, the program will exit with an error message: {e}.")
         sys.exit()
@@ -57,6 +64,13 @@ def run_task(data_fetcher: DataFetcher, sensor_updator: SensorUpdator):
             profix = f"_{user_id_list[i]}" if len(user_id_list) > 1 else ""
             if balance_list[i] is not None:
                 sensor_updator.update(BALANCE_SENSOR_NAME + profix, None, balance_list[i], BALANCE_UNIT)
+                if balance_list[i] < BALANCE and RECHARGE_NOTIFY:
+                    for token in PUSHPLUS_TOKEN:
+                        title= '电费余额不足提醒' 
+                        content =f'您用户号{user_id_list[i]}的当前电费余额为：{balance_list[i]}元，请及时充值。' 
+                        url = 'http://www.pushplus.plus/send?token='+token+'&title='+title+'&content='+content
+                        requests.get(url)
+                        logging.info(f'The current balance of user id {user_id_list[i]} is {balance_list[i]} CNY less than {BALANCE}CNY, notice has been sent, please pay attention to check and recharge.')
             if last_daily_usage_list[i] is not None:
                 sensor_updator.update(DAILY_USAGE_SENSOR_NAME + profix, last_daily_date_list[i], last_daily_usage_list[i], USAGE_UNIT)
             if yearly_usage_list[i] is not None:

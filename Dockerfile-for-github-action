@@ -1,10 +1,11 @@
-FROM python:3.9-bullseye as build
+FROM python:3.9.19-slim-bullseye as build
 
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 ARG TARGETARCH
-
+ARG VERSION=v1.5.0
+ENV VERSION=$VERSION
 WORKDIR /app
 
 # COPY scripts/* /app/
@@ -48,6 +49,6 @@ RUN cd /tmp \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /var/log/*
 
-ENV LANG C.UTF-8
+ENV LANG=C.UTF-8
 
 CMD ["python"]

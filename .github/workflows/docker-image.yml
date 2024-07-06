@@ -1,21 +1,25 @@
 name: Docker Image CI
 
-on:
- push:
-   paths:
-     - 'scripts/**'
-     - 'Dockerfile-for-github-action'
-     - 'requirements.txt'
-     - 'example.env'
-     - '.github/workflows/docker-image.yml'
+on:  
+  workflow_dispatch:
+    inputs:
+      username:
+        description: 'version of this branch'
+        default: 'v1.5.0'
+        required: true
+        type: string
+    paths:
+      - 'scripts/**'
+      - 'Dockerfile-for-github-action'
+      - 'requirements.txt'
+      - 'example.env'
+      - '.github/workflows/docker-image.yml'
 
 jobs:
 
   build:
 
     runs-on: ubuntu-latest
-    env:
-      VERSION: v1.4.2
     steps:
     - uses: actions/checkout@v3
 
@@ -30,11 +34,11 @@ jobs:
       run: |
         PLATFORMS=linux/arm64,linux/amd64
         DOCKER_IMAGE=arcw/sgcc_electricity
-        docker buildx build --build-arg VERSION=${{env.VERSION }} --platform $PLATFORMS -t $DOCKER_IMAGE:latest -t $DOCKER_IMAGE:${{env.VERSION }} --file Dockerfile-for-github-action --push .
+        docker buildx build --build-arg VERSION=${{ inputs.username }} --platform $PLATFORMS -t $DOCKER_IMAGE:latest -t $DOCKER_IMAGE:${{ inputs.username }} --file Dockerfile-for-github-action --push .
 
     - name: Log into Aliyun hub registry and push Docker image
       run: |
         echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.ALIYUN_USERNAME }} --password-stdin registry.cn-hangzhou.aliyuncs.com 
         PLATFORMS=linux/arm64,linux/amd64
         DOCKER_IMAGE=registry.cn-hangzhou.aliyuncs.com/arcw/sgcc_electricity
-        docker buildx build --build-arg VERSION=${{env.VERSION }} --platform $PLATFORMS -t $DOCKER_IMAGE:latest -t $DOCKER_IMAGE:${{env.VERSION }} --file Dockerfile-for-github-action --push .
+        docker buildx build --build-arg VERSION=${{ inputs.username }} --platform $PLATFORMS -t $DOCKER_IMAGE:latest -t $DOCKER_IMAGE:${{ inputs.username }} --file Dockerfile-for-github-action --push .

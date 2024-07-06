@@ -1,4 +1,7 @@
 **重要说明：**原作者@renhai-lab 已于2023年10将项目归档，原仓库不再更新。这个版本是在原仓库基础上更新的。在此向原作者表达谢意和致敬。验证码识别已经从最开始的在线商业API替换成离线神经网络检测版本，请使用本仓库的同学点个小星星，或者打赏鼓励。
+
+添加微信通知后，我想这基本上就是这个插件的最终形态了，docker镜像压缩到300MB，后续可能只会在网站变动或者出问题才会更新，再次感谢大家的Star。
+
 ### 支付宝&微信 打赏码
 
 <p align="center">
@@ -88,36 +91,55 @@
    参考以下文件编写.env文件
 
    ```bash
-   # 以下项都需要修改
-   # 国网登录信息
-   PHONE_NUMBER="xxx" # 修改为自己的登录账号
-   PASSWORD="xxxx" # 修改为自己的登录密码
-
+   ### 以下项都需要修改
+   ## 国网登录信息
+   # 修改为自己的登录账号
+   PHONE_NUMBER="xxx" 
+   # 修改为自己的登录密码
+   PASSWORD="xxxx" 
 
    # SQLite 数据库配置
-   # True or False 不启用数据库储存每日用电量数据。
+   # or False 不启用数据库储存每日用电量数据。
    ENABLE_DATABASE_STORAGE=True
-   # 数据库名，默认为homeassistant.db
+   # 数据库名，默认为homeassistant
    DB_NAME="homeassistant.db"
    # COLLECTION_NAME默认为electricity_daily_usage_{国网用户id}，不支持修改。
 
-   # homeassistant配置
-   HASS_URL="http://localhost:8123/" # 改为你的localhost为你的homeassistant地址
+   ## homeassistant配置
+   # 改为你的localhost为你的homeassistant地址
+   HASS_URL="http://localhost:8123/" 
+   # homeassistant的长期令牌
+   HASS_TOKEN="eyxxxxx"
 
-   HASS_TOKEN="eyxxxxx" # homeassistant的长期令牌
-
-   # selenium运行参数
-   JOB_START_TIME="07:00" # 任务开始时间，24小时制，例如"07:00”则为每天早上7点执行，第一次启动程序如果时间晚于早上7点则会立即执行一次。
+   ## selenium运行参数
+   # 任务开始时间，24小时制，例如"07:00"则为每天早上7点执行，第一次启动程序如果时间晚于早上7点则会立即执行一次，每隔12小时执行一次。
+   JOB_START_TIME="07:00"
 
    ## 其他默认参数
-   DRIVER_IMPLICITY_WAIT_TIME=60 # 浏览器默认等待时间，秒。
-   RETRY_TIMES_LIMIT=5 # 登录重试次数
-   LOGIN_EXPECTED_TIME=60 # 登录超时时间，秒
-   RETRY_WAIT_TIME_OFFSET_UNIT=10 
-   FIRST_SLEEP_TIME=10 # 第一次运行等待时间，秒
+   # 浏览器默认等待时间，秒。
+   DRIVER_IMPLICITY_WAIT_TIME=60
+   # 登录重试次数
+   RETRY_TIMES_LIMIT=5
+   # 登录超时时间，秒
+   LOGIN_EXPECTED_TIME=60
+   RETRY_WAIT_TIME_OFFSET_UNIT=10
 
-   # 日志级别
-   LOG_LEVEL="INFO" # 例如“DEBUG”可以查看出错情况
+
+   ## 日志级别
+   # 例如“DUBUG”可以查看出错情况
+   LOG_LEVEL="INFO"
+
+   ## 记录的天数, 仅支持填写 7 或 30
+   # 国网原本可以记录 30 天,现在不开通智能缴费只能查询 7 天造成错误
+   DATA_RETENTION_DAYS=7
+
+   ## 余额提醒
+   # 是否缴费提醒
+   RECHARGE_NOTIFY=Flase
+   # 余额
+   BALANCE=5.0
+   # pushplus token 如果有多个就用","分隔，","之间不要有空格，单个就不要有","
+   PUSHPLUS_TOKEN=xxxxxxx,xxxxxxx,xxxxxxx
    ```
 4. 运行
 
@@ -129,13 +151,17 @@
    # 或者后台运行
    docker compose up -d --build
    ```
+
+```
+
 5. 更新容器
 
    ```bash
    docker compose down # 删除容器
    docker compose pull # 更新镜像
    docker compose up # 重新运行
-   ```
+```
+
 6. 运行成功应该显示如下日志：
 
 ```bash
@@ -352,7 +378,9 @@ sensor:
 
 ### 5）电量通知
 
-可以使用homeassistant内置通知或者其他通知服务，比如[pushdeer](https://github.com/easychen/pushdeer)。
+  更新电费余额不足提醒，在.env里设置提醒余额。目前我是用[pushplus](https://www.pushplus.plus/)的方案，注册pushplus然后，获取token，通知给谁就让谁注册并将token填到.env中
+
+## token获取方法参考[https://cloud.tencent.com/developer/article/2139538](https://cloud.tencent.com/developer/article/2139538)
 
 ## 写在最后
 
@@ -366,17 +394,17 @@ sensor:
 
 - 增加近30天每日电量写入数据库（默认mongodb），其他数据库请自行配置。
   - 添加配置默认增加近 7 天每日电量写入数据, 可修改为 30 天, 因为国网目前[「要签约智能交费才能看到30天的数据，不然就只能看到7天的」](https://github.com/ARC-MX/sgcc_electricity_new/issues/11#issuecomment-2158973048)
-- 将间歇执行设置为定时执行: JOB_START_TIME，24小时制，例如"07:00”则为每天早上7点执行，第一次启动程序立即执行一次, 每12小时执行一次 
+- 将间歇执行设置为定时执行: JOB_START_TIME，24小时制，例如"07:00”则为每天早上7点执行，第一次启动程序立即执行一次, 每12小时执行一次
 - 给last_daily_usage增加present_date，用来确定更新的是哪一天的电量。一般查询的日期会晚一到两天。
 - 对configuration.yaml中自定义实体部分修改。
-
 
 # 重要修改通知
 
 2024-06-13：SQLite替换MongoDB，原因是python自带SQLite3，不需要额外安装，也不再需要MongoDB镜像。
 2024-07-03：新增每天定时执行两次，添加配置默认增加近 7 天每日电量写入数据, 可修改为 30 天。
+2024-07-05：新增余额不足提醒功能。
 TO-DO
 
 - [X] 增加离线滑动验证码识别方案
-- [ ] 添加默认推送服务，电费余额不足提醒
+- [X] 添加默认推送服务，电费余额不足提醒
 - [ ] 。。。

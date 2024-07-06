@@ -186,7 +186,7 @@ class DataFetcher:
 
         if enable_database_storage:
             # 将数据存储到数据库
-            logging.debug("enable_database_storage is true, we will store the data to the database.")
+            logging.info("enable_database_storage is true, we will store the data to the database.")
             self.client = sqlite3.connect(os.getenv("DB_NAME"))
         else:
             self.client = None
@@ -265,7 +265,9 @@ class DataFetcher:
                 pass
             else:
                 if self._login(driver):
-                    raise Exception("_login unsuccessed !")
+                    logging.info("login successed !")
+                else:
+                    logging.info("login unsuccessed !")
             logging.info(f"Login successfully on {LOGIN_URL}")
             time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
             user_id_list = self._get_user_ids(driver)
@@ -342,9 +344,9 @@ class DataFetcher:
             time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
             if (driver.current_url == LOGIN_URL): # if login not success
                 try:
+                    logging.info(f"Sliding CAPTCHA recognition failed and reloaded.\r")
                     self._click_button(driver, By.CLASS_NAME, "el-button.el-button--primary")
                     time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
-                    logging.info(f"Sliding CAPTCHA recognition failed and reloaded.\r")
                     continue
                 except:
                     logging.debug(
