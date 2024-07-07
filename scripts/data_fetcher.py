@@ -436,9 +436,12 @@ class DataFetcher:
             last_daily_usage_list.append(last_daily_usage)
             yearly_charge_list.append(yearly_charge)
             yearly_usage_list.append(yearly_usage)
-            month_list.append(month[-1])
-            month_charge_list.append(month_charge[-1])
-            month_usage_list.append(month_usage[-1])
+            if month:
+                month_list.append(month[-1])
+            if month_charge:
+                month_charge_list.append(month_charge[-1])
+            if month_usage:
+                month_usage_list.append(month_usage[-1])
 
             # switch to next user id
             if i != len(user_id_list):
