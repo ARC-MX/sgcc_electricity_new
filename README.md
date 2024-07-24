@@ -75,91 +75,92 @@
 1. 安装docker和homeassistant，[Homeassistant极简安装法](https://github.com/renhaiidea/easy-homeassistant)。
 2. 克隆仓库
 
-   ```bash
-   git clone https://github.com/ARC-MX/sgcc_electricity_new.git
-   # 如果github网络环境不好的话可以使用国内镜像，完全同步的，个人推荐使用国内镜像
-   # git clone https://gitee.com/ARC-MX/sgcc_electricity_new.git
-   cd sgcc_electricity_new
-   ```
-3. 创建环境变量文件
-
-   ```bash
-   cp example.env .env
-   vim .env
-   ```
-
-   参考以下文件编写.env文件
-
-   ```bash
-   ### 以下项都需要修改
-   ## 国网登录信息
-   # 修改为自己的登录账号
-   PHONE_NUMBER="xxx" 
-   # 修改为自己的登录密码
-   PASSWORD="xxxx" 
-
-   # SQLite 数据库配置
-   # or False 不启用数据库储存每日用电量数据。
-   ENABLE_DATABASE_STORAGE=True
-   # 数据库名，默认为homeassistant
-   DB_NAME="homeassistant.db"
-   # COLLECTION_NAME默认为electricity_daily_usage_{国网用户id}，不支持修改。
-
-   ## homeassistant配置
-   # 改为你的localhost为你的homeassistant地址
-   HASS_URL="http://localhost:8123/" 
-   # homeassistant的长期令牌
-   HASS_TOKEN="eyxxxxx"
-
-   ## selenium运行参数
-   # 任务开始时间，24小时制，例如"07:00"则为每天早上7点执行，第一次启动程序如果时间晚于早上7点则会立即执行一次，每隔12小时执行一次。
-   JOB_START_TIME="07:00"
-
-   ## 其他默认参数
-   # 浏览器默认等待时间，秒。
-   DRIVER_IMPLICITY_WAIT_TIME=60
-   # 登录重试次数
-   RETRY_TIMES_LIMIT=5
-   # 登录超时时间，秒
-   LOGIN_EXPECTED_TIME=60
-   RETRY_WAIT_TIME_OFFSET_UNIT=10
-
-
-   ## 日志级别
-   # 例如“DUBUG”可以查看出错情况
-   LOG_LEVEL="INFO"
-
-   ## 记录的天数, 仅支持填写 7 或 30
-   # 国网原本可以记录 30 天,现在不开通智能缴费只能查询 7 天造成错误
-   DATA_RETENTION_DAYS=7
-
-   ## 余额提醒
-   # 是否缴费提醒
-   RECHARGE_NOTIFY=Flase
-   # 余额
-   BALANCE=5.0
-   # pushplus token 如果有多个就用","分隔，","之间不要有空格，单个就不要有","
-   PUSHPLUS_TOKEN=xxxxxxx,xxxxxxx,xxxxxxx
-   ```
-4. 运行
-
-   我已经优化了镜像环境，将镜像的地址配置为阿里云，如果要使用docker hub的源可以将docker-compose.yml中
-   image: registry.cn-hangzhou.aliyuncs.com/arcw/sgcc_electricity:latest 改为 arcw/sgcc_electricity:latest
-
-   ```bash
-   docker compose up --build 
-   # 或者后台运行
-   docker compose up -d --build
-   ```
-
+```bash
+git clone https://github.com/ARC-MX/sgcc_electricity_new.git
+# 如果github网络环境不好的话可以使用国内镜像，完全同步的，个人推荐使用国内镜像
+# git clone https://gitee.com/ARC-MX/sgcc_electricity_new.git
+cd sgcc_electricity_new
 ```
 
-5. 更新容器
+3. 创建环境变量文件
 
-   ```bash
-   docker compose down # 删除容器
-   docker compose pull # 更新镜像
-   docker compose up # 重新运行
+```bash
+cp example.env .env
+vim .env
+```
+
+参考以下文件编写.env文件
+
+```bash
+### 以下项都需要修改
+## 国网登录信息
+# 修改为自己的登录账号
+PHONE_NUMBER="xxx" 
+# 修改为自己的登录密码
+PASSWORD="xxxx" 
+
+# SQLite 数据库配置
+# or False 不启用数据库储存每日用电量数据。
+ENABLE_DATABASE_STORAGE=True
+# 数据库名，默认为homeassistant
+DB_NAME="homeassistant.db"
+# COLLECTION_NAME默认为electricity_daily_usage_{国网用户id}，不支持修改。
+
+## homeassistant配置
+# 改为你的localhost为你的homeassistant地址
+HASS_URL="http://localhost:8123/" 
+# homeassistant的长期令牌
+HASS_TOKEN="eyxxxxx"
+
+## selenium运行参数
+# 任务开始时间，24小时制，例如"07:00"则为每天早上7点执行，第一次启动程序如果时间晚于早上7点则会立即执行一次，每隔12小时执行一次。
+JOB_START_TIME="07:00"
+
+## 其他默认参数
+# 浏览器默认等待时间，秒。
+DRIVER_IMPLICITY_WAIT_TIME=60
+# 登录重试次数
+RETRY_TIMES_LIMIT=5
+# 登录超时时间，秒
+LOGIN_EXPECTED_TIME=60
+RETRY_WAIT_TIME_OFFSET_UNIT=10
+
+
+## 日志级别
+# 例如“DUBUG”可以查看出错情况
+LOG_LEVEL="INFO"
+
+## 记录的天数, 仅支持填写 7 或 30
+# 国网原本可以记录 30 天,现在不开通智能缴费只能查询 7 天造成错误
+DATA_RETENTION_DAYS=7
+
+## 余额提醒
+# 是否缴费提醒
+RECHARGE_NOTIFY=Flase
+# 余额
+BALANCE=5.0
+# pushplus token 如果有多个就用","分隔，","之间不要有空格，单个就不要有","
+PUSHPLUS_TOKEN=xxxxxxx,xxxxxxx,xxxxxxx
+```
+
+4. 运行
+
+  我已经优化了镜像环境，将镜像的地址配置为阿里云，如果要使用docker hub的源可以将docker-compose.yml中
+  image: registry.cn-hangzhou.aliyuncs.com/arcw/sgcc_electricity:latest 改为 arcw/sgcc_electricity:latest
+
+```bash
+docker compose up --build 
+# 或者后台运行
+docker compose up -d --build
+```
+
+5. 更新容器及其代码
+
+```bash
+docker compose down # 删除容器
+docker compose pull # 更新镜像
+git pull --tags origin master:master	#更新代码，代码不在容器中，所以要手动更新
+docker compose up # 重新运行
 ```
 
 6. 运行成功应该显示如下日志：
