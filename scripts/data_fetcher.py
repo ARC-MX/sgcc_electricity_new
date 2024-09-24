@@ -182,14 +182,12 @@ class DataFetcher:
             self._chromium_version = self._get_chromium_version()
 
         # 获取 ENABLE_DATABASE_STORAGE 的值，默认为 False
-        enable_database_storage = os.getenv("ENABLE_DATABASE_STORAGE", "false").lower() == "true"
+        self.enable_database_storage = os.getenv("ENABLE_DATABASE_STORAGE", "false").lower() == "true"
 
-        if enable_database_storage:
+        if self.enable_database_storage:
             # 将数据存储到数据库
             logging.info("enable_database_storage is true, we will store the data to the database.")
-            self.client = sqlite3.connect(os.getenv("DB_NAME"))
         else:
-            self.client = None
             logging.info("enable_database_storage is false, we will not store the data to the database.")
 
         self.DRIVER_IMPLICITY_WAIT_TIME = int(os.getenv("DRIVER_IMPLICITY_WAIT_TIME"))
@@ -212,7 +210,7 @@ class DataFetcher:
         :param user_id: 用户ID"""
         try:
             # 创建数据库
-            self.connect = self.client
+            self.connect = sqlite3.connect(os.getenv("DB_NAME"))
             self.connect.cursor()
             logging.info(f"Database of {os.getenv('DB_NAME')} created successfully.")
             try:
@@ -423,7 +421,7 @@ class DataFetcher:
             last_daily_datetime, last_daily_usage = self._get_yesterday_usage(driver)
 
             # 新增储存用电量
-            if self.client is not None:
+            if self.enable_database_storage:
                 self.save_usage_data(driver, user_id_list[i - 1])
 
             if last_daily_usage is None:
