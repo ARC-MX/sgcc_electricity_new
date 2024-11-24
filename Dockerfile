@@ -5,7 +5,7 @@ ENV PYTHONUNBUFFERED 1
 
 WORKDIR /app
 
-# COPY scripts/* /app/
+COPY scripts/* /app/
 COPY ./requirements.txt /tmp/requirements.txt
 
 RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list \

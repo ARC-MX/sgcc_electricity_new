@@ -6,9 +6,9 @@ ENV PYTHONUNBUFFERED=1
 ARG TARGETARCH
 ARG VERSION=v1.5.0
 ENV VERSION=$VERSION
-WORKDIR /app
 
-# COPY scripts/* /app/
+COPY scripts/* /app/
+WORKDIR /app
 
 RUN apt-get --allow-releaseinfo-change update \
     && apt-get install -y --no-install-recommends jq chromium chromium-driver tzdata \
