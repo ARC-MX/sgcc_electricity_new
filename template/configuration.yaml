@@ -19,7 +19,7 @@ template:
         event_data:
           entity_id: sensor.last_electricity_usage_户号
     sensor:
-      - name: 最近一天用电量
+      - name: last_electricity_usage_entity_户号
         unique_id: last_electricity_usage_entity_户号
         state: "{{ states('sensor.last_electricity_usage_户号') }}"
         attributes: 
@@ -30,10 +30,10 @@ template:
         device_class: energy
 
   - trigger:
-    - platform: event
-      event_type: "state_changed"
-      event_data:
-      entity_id: sensor.month_electricity_usage_户号
+      - platform: event
+        event_type: "state_changed"
+        event_data:
+          entity_id: sensor.month_electricity_usage_户号
     sensor:
       - name: month_electricity_usage_entity_户号
         unique_id: month_electricity_usage_entity_户号
@@ -46,10 +46,10 @@ template:
         device_class: energy
 
   - trigger:
-    - platform: event
-      event_type: "state_changed"
-      event_data:
-      entity_id: sensor.month_electricity_charge_户号
+      - platform: event
+        event_type: "state_changed"
+        event_data:
+          entity_id: sensor.month_electricity_charge_户号
     sensor:
       - name: month_electricity_charge_entity_户号
         unique_id: month_electricity_charge_entity_户号

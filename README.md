@@ -8,7 +8,7 @@
 
 <p align="center">
 <img src="assets/Alipay.png"  width=200 style="margin-right: 70px";/>
-<img src="assets/WeiChatpay.png"  width=200/>
+<img src="assets/WeiChat.jpg"  width=200/>
 </p>
 
 # ⚡️国家电网电力获取
