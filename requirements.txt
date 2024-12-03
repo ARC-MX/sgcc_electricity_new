@@ -6,3 +6,4 @@ undetected_chromedriver==3.4.7
 onnxruntime==1.17.3
 numpy==1.24.3
 python-dotenv
+python-dateutil

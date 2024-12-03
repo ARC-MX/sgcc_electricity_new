@@ -2,8 +2,8 @@
 
 添加微信通知后，我想这基本上就是这个插件的最终形态了，docker镜像压缩到300MB，后续可能只会在网站变动或者出问题才会更新，再次感谢大家的Star。
 
-
 **注意** 有很多新手都在提交验证码不能识别的相关issue，特在此统一说明：国网每天有登录限制，每天只能登录有限的几次，超过限制验证码识别成功也不会登录成功。因此，诸如[issue47](https://github.com/ARC-MX/sgcc_electricity_new/issues/47),[issue50](https://github.com/ARC-MX/sgcc_electricity_new/issues/50),[issue29](https://github.com/ARC-MX/sgcc_electricity_new/issues/29)这些都是这个问题，以后就不做回复了。
+
 ### 支付宝&微信 打赏码
 
 <p align="center">
@@ -230,10 +230,7 @@ template:
       - name: last_electricity_usage_entity
         unique_id: last_electricity_usage_entity
         state: "{{ states('sensor.last_electricity_usage') }}"
-        attributes:
-          present_date: "{{ state_attr('sensor.last_electricity_usage', 'present_date') }}"
-          last_updated: "{{ state_attr('sensor.last_electricity_usage', 'last_updated') }}"
-        state_class: total_increasing
+        state_class: measurement
         unit_of_measurement: "kWh"
         device_class: energy
 
@@ -246,10 +243,7 @@ template:
       - name: month_electricity_usage_entity
         unique_id: month_electricity_usage_entity
         state: "{{ states('sensor.month_electricity_usage') }}"
-        attributes:
-          present_date: "{{ state_attr('sensor.month_electricity_usage', 'present_date') }}"
-          last_updated: "{{ state_attr('sensor.month_electricity_usage', 'month_updated') }}"
-        state_class: total_increasing
+        state_class: measurement
         unit_of_measurement: "kWh"
         device_class: energy
 
@@ -262,10 +256,7 @@ template:
       - name: month_electricity_charge_entity
         unique_id: month_electricity_charge_entity
         state: "{{ states('sensor.month_electricity_charge') }}"
-        attributes:
-          present_date: "{{ state_attr('sensor.month_electricity_charge', 'present_date') }}"
-          last_updated: "{{ state_attr('sensor.month_electricity_charge', 'month_updated') }}"
-        state_class: total_increasing
+        state_class: measurement
         unit_of_measurement: "CNY"
         device_class: monetary
 
@@ -294,6 +285,7 @@ template:
         state_class: total_increasing
         unit_of_measurement: "CNY"
         device_class: monetary
+
 ```
 
 如果你有多个户号，每个户号参照[configuration.yaml](template/configuration.yaml)配置。
