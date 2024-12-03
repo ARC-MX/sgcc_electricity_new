@@ -4,10 +4,10 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 ARG TARGETARCH
-ARG VERSION=v1.5.0
+ARG VERSION=v1.5.2
 ENV VERSION=$VERSION
 
-COPY scripts/* /app/
+# COPY scripts/* /app/
 WORKDIR /app
 
 RUN apt-get --allow-releaseinfo-change update \

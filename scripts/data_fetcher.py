@@ -84,46 +84,6 @@ def base64_to_PLI(base64_str: str):
     img = Image.open(image_data)
     return img
 
-# # cv2转base64
-# def cv2_to_base64(img):
-#     img = cv2.imencode('.jpg', img)[1]
-#     image_code = str(base64.b64encode(img))[2:-1]
-
-#     return image_code
-
-# # base64转cv2
-# def base64_to_cv2(base64_code):
-#     img_data = base64.b64decode(base64_code)
-#     img_array = np.fromstring(img_data, np.uint8)
-#     img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
-#     return img
-
-# def bytes2cv(img):
-#     '''二进制图片转cv2
-
-#     :param im: 二进制图片数据，bytes
-#     :return: cv2图像，numpy.ndarray
-#     '''
-#     img_array = np.fromstring(img, np.uint8)  # 转换np序列
-#     img_raw = cv2.imdecode(img_array, cv2.IMREAD_UNCHANGED)  # 转换Opencv格式BGR
-#     return img_raw
-
-# def cv2bytes(im):
-#     '''cv2转二进制图片
-
-#     :param im: cv2图像，numpy.ndarray
-#     :return: 二进制图片数据，bytes
-#     '''
-#     return np.array(cv2.imencode('.png', im)[1]).tobytes()
-
-# def cv2_crop(im, box):
-#     '''cv2实现类似PIL的裁剪
-
-#     :param im: cv2加载好的图像
-#     :param box: 裁剪的矩形，(left, upper, right, lower)元组
-#     '''
-#     return im.copy()[box[1]:box[3], box[0]:box[2], :]
-
 def get_transparency_location(image):
     '''获取基于透明元素裁切图片的左上角、右下角坐标
 
@@ -195,6 +155,45 @@ class DataFetcher:
         self.LOGIN_EXPECTED_TIME = int(os.getenv("LOGIN_EXPECTED_TIME"))
         self.RETRY_WAIT_TIME_OFFSET_UNIT = int(os.getenv("RETRY_WAIT_TIME_OFFSET_UNIT"))
 
+    # @staticmethod
+    def _click_button(self, driver, button_search_type, button_search_key):
+        '''wrapped click function, click only when the element is clickable'''
+        click_element = driver.find_element(button_search_type, button_search_key)
+        # logging.info(f"click_element:{button_search_key}.is_displayed() = {click_element.is_displayed()}\r")
+        # logging.info(f"click_element:{button_search_key}.is_enabled() = {click_element.is_enabled()}\r")
+        WebDriverWait(driver, int(os.getenv("DRIVER_IMPLICITY_WAIT_TIME"))).until(EC.element_to_be_clickable(click_element))
+        driver.execute_script("arguments[0].click();", click_element)
+
+    # @staticmethod
+    def _is_captcha_legal(self, captcha):
+        ''' check the ddddocr result, justify whether it's legal'''
+        if (len(captcha) != 4):
+            return False
+        for s in captcha:
+            if (not s.isalpha() and not s.isdigit()):
+                return False
+        return True
+
+    # @staticmethod
+    def _get_chromium_version(self):
+        result = str(subprocess.check_output(["chromium", "--product-version"]))
+        version = re.findall(r"(\d*)\.", result)[0]
+        logging.info(f"chromium-driver version is {version}")
+        return int(version)
+
+    # @staticmethod 
+    def _sliding_track(self, driver, distance):# 机器模拟人工滑动轨迹
+        # 获取按钮
+        slider = driver.find_element(By.CLASS_NAME, "slide-verify-slider-mask-item")
+        ActionChains(driver).click_and_hold(slider).perform()
+        # 获取轨迹
+        # tracks = _get_tracks(distance)
+        # for t in tracks:
+        yoffset_random = random.uniform(-2, 4)
+        ActionChains(driver).move_by_offset(xoffset=distance, yoffset=yoffset_random).perform()
+            # time.sleep(0.2)
+        ActionChains(driver).release().perform()
+
     def base64_api(self, b64, typeid=33):
         data = {"username": self._tujian_uname, "password": self._tujian_passwd, "typeid": typeid, "image": b64}
         result = json.loads(requests.post("http://api.ttshitu.com/predict", json=data).text)
@@ -259,8 +258,10 @@ class DataFetcher:
 
         try:
             if DEBUG:
-                driver.get(LOGIN_URL)
-                pass
+                if self._login(driver,phone_code=True):
+                    logging.info("login successed !")
+                else:
+                    logging.info("login unsuccessed !")
             else:
                 if self._login(driver):
                     logging.info("login successed !")
@@ -296,7 +297,7 @@ class DataFetcher:
         driver.implicitly_wait(self.DRIVER_IMPLICITY_WAIT_TIME)
         return driver
 
-    def _login(self, driver):
+    def _login(self, driver, phone_code = False):
 
         driver.get(LOGIN_URL)
         logging.info(f"Open LOGIN_URL:{LOGIN_URL}.\r")
@@ -304,55 +305,74 @@ class DataFetcher:
         # swtich to username-password login page
         driver.find_element(By.CLASS_NAME, "user").click()
         logging.info("find_element 'user'.\r")
+        self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[1]/div[1]/div[2]/span')
         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
-        # input username and password
-        input_elements = driver.find_elements(By.CLASS_NAME, "el-input__inner")
-        input_elements[0].send_keys(self._username)
-        logging.info(f"input_elements username : {self._username}.\r")
-        input_elements[1].send_keys(self._password)
-        logging.info(f"input_elements password : {self._password}.\r")
         # click agree button
         self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[2]/div[1]/form/div[1]/div[3]/div/span[2]')
         logging.info("Click the Agree option.\r")
         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
-        # click login button
-        self._click_button(driver, By.CLASS_NAME, "el-button.el-button--primary")
-        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
-        logging.info("Click login button.\r")
-        # sometimes ddddOCR may fail, so add retry logic)
-        for retry_times in range(1, self.RETRY_TIMES_LIMIT + 1):
+        if phone_code:
+            self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[1]/div[1]/div[3]/span')
+            input_elements = driver.find_elements(By.CLASS_NAME, "el-input__inner")
+            input_elements[2].send_keys(self._username)
+            logging.info(f"input_elements username : {self._username}.\r")
+            self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[2]/div[2]/form/div[1]/div[2]/div[2]/div/a')
+            code = input("Input your phone verification code: ")
+            input_elements[3].send_keys(code)
+            logging.info(f"input_elements verification code: {code}.\r")
+            # click login button
+            self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[2]/div[2]/form/div[2]/div/button/span')
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
+            logging.info("Click login button.\r")
 
-            #get canvas image
-            background_JS = 'return document.getElementById("slideVerify").childNodes[0].toDataURL("image/png");'
-            targe_JS = 'return document.getElementsByClassName("slide-verify-block")[0].toDataURL("image/png");'
-            # get base64 image data
-            im_info = driver.execute_script(background_JS) 
-            background = im_info.split(',')[1]  
-            background_image = base64_to_PLI(background)
-            logging.info(f"Get electricity canvas image successfully.\r")
-            distance = self.onnx.get_distance(background_image)
-            logging.info(f"Image CaptCHA distance is {distance}.\r")
+            return True
+        else :
+            # input username and password
+            input_elements = driver.find_elements(By.CLASS_NAME, "el-input__inner")
+            input_elements[0].send_keys(self._username)
+            logging.info(f"input_elements username : {self._username}.\r")
+            input_elements[1].send_keys(self._password)
+            logging.info(f"input_elements password : {self._password}.\r")
 
-            # slider = driver.find_element(By.CLASS_NAME, "slide-verify-slider-mask-item")
-            # ActionChains(driver).click_and_hold(slider).perform()
-            # ActionChains(driver).move_by_offset(xoffset=round(distance*1.06), yoffset=0).perform()
-            # ActionChains(driver).release().perform()
+            # click login button
+            self._click_button(driver, By.CLASS_NAME, "el-button.el-button--primary")
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
+            logging.info("Click login button.\r")
+            # sometimes ddddOCR may fail, so add retry logic)
+            for retry_times in range(1, self.RETRY_TIMES_LIMIT + 1):
+                
+                self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[1]/div[1]/div[2]/span')
+                #get canvas image
+                background_JS = 'return document.getElementById("slideVerify").childNodes[0].toDataURL("image/png");'
+                targe_JS = 'return document.getElementsByClassName("slide-verify-block")[0].toDataURL("image/png");'
+                # get base64 image data
+                im_info = driver.execute_script(background_JS) 
+                background = im_info.split(',')[1]  
+                background_image = base64_to_PLI(background)
+                logging.info(f"Get electricity canvas image successfully.\r")
+                distance = self.onnx.get_distance(background_image)
+                logging.info(f"Image CaptCHA distance is {distance}.\r")
 
-            self._sliding_track(driver, round(distance*1.06)) #1.06是补偿
-            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
-            if (driver.current_url == LOGIN_URL): # if login not success
-                try:
-                    logging.info(f"Sliding CAPTCHA recognition failed and reloaded.\r")
-                    self._click_button(driver, By.CLASS_NAME, "el-button.el-button--primary")
-                    time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
-                    continue
-                except:
-                    logging.debug(
-                        f"Login failed, maybe caused by invalid captcha, {self.RETRY_TIMES_LIMIT - retry_times} retry times left.")
-            else:
-                return False
-        
-        logging.error(f"Login failed, maybe caused by Sliding CAPTCHA recognition failed")
+                # slider = driver.find_element(By.CLASS_NAME, "slide-verify-slider-mask-item")
+                # ActionChains(driver).click_and_hold(slider).perform()
+                # ActionChains(driver).move_by_offset(xoffset=round(distance*1.06), yoffset=0).perform()
+                # ActionChains(driver).release().perform()
+
+                self._sliding_track(driver, round(distance*1.06)) #1.06是补偿
+                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+                if (driver.current_url == LOGIN_URL): # if login not success
+                    try:
+                        logging.info(f"Sliding CAPTCHA recognition failed and reloaded.\r")
+                        self._click_button(driver, By.CLASS_NAME, "el-button.el-button--primary")
+                        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
+                        continue
+                    except:
+                        logging.debug(
+                            f"Login failed, maybe caused by invalid captcha, {self.RETRY_TIMES_LIMIT - retry_times} retry times left.")
+                else:
+                    return False
+            logging.error(f"Login failed, maybe caused by Sliding CAPTCHA recognition failed")
+
         raise Exception(
             "Login failed, maybe caused by 1.incorrect phone_number and password, please double check. or 2. network, please mnodify LOGIN_EXPECTED_TIME in .env and run docker compose up --build.")
         return True
@@ -592,42 +612,7 @@ class DataFetcher:
 
         self.connect.close()
 
-    @staticmethod
-    def _click_button(driver, button_search_type, button_search_key):
-        '''wrapped click function, click only when the element is clickable'''
-        click_element = driver.find_element(button_search_type, button_search_key)
-        WebDriverWait(driver, int(os.getenv("DRIVER_IMPLICITY_WAIT_TIME"))).until(EC.element_to_be_clickable(click_element))
-        driver.execute_script("arguments[0].click();", click_element)
 
-    @staticmethod
-    def _is_captcha_legal(captcha):
-        ''' check the ddddocr result, justify whether it's legal'''
-        if (len(captcha) != 4):
-            return False
-        for s in captcha:
-            if (not s.isalpha() and not s.isdigit()):
-                return False
-        return True
-
-    @staticmethod
-    def _get_chromium_version():
-        result = str(subprocess.check_output(["chromium", "--product-version"]))
-        version = re.findall(r"(\d*)\.", result)[0]
-        logging.info(f"chromium-driver version is {version}")
-        return int(version)
-
-    @staticmethod 
-    def _sliding_track(driver, distance):# 机器模拟人工滑动轨迹
-        # 获取按钮
-        slider = driver.find_element(By.CLASS_NAME, "slide-verify-slider-mask-item")
-        ActionChains(driver).click_and_hold(slider).perform()
-        # 获取轨迹
-        # tracks = _get_tracks(distance)
-        # for t in tracks:
-        yoffset_random = random.uniform(-2, 4)
-        ActionChains(driver).move_by_offset(xoffset=distance, yoffset=yoffset_random).perform()
-            # time.sleep(0.2)
-        ActionChains(driver).release().perform()
 
 
 if __name__ == "__main__":

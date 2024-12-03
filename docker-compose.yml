@@ -15,8 +15,8 @@ services:
       - SET_CONTAINER_TIMEZONE=true
       - CONTAINER_TIMEZONE=Asia/Shanghai
     restart: unless-stopped
-    # volumes:
-    #   - ./scripts:/app
+    volumes:
+      - ./scripts:/app
     command: python3 main.py 
 
 networks:
