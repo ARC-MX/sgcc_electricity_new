@@ -64,6 +64,7 @@ def run_task(data_fetcher: DataFetcher, sensor_updator: SensorUpdator):
             profix = f"_{user_id_list[i]}" if len(user_id_list) > 1 else ""
             if balance_list[i] is not None:
                 sensor_updator.update(BALANCE_SENSOR_NAME + profix, None, balance_list[i], BALANCE_UNIT)
+                logging.info(f"Check the electricity bill balance. When the balance is less than {BALANCE} CNY, the notification will be sent = {RECHARGE_NOTIFY}")
                 if balance_list[i] < BALANCE and RECHARGE_NOTIFY:
                     for token in PUSHPLUS_TOKEN:
                         title= '电费余额不足提醒' 

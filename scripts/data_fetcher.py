@@ -268,7 +268,7 @@ class DataFetcher:
                 else:
                     logging.info("login unsuccessed !")
             logging.info(f"Login successfully on {LOGIN_URL}")
-            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
             user_id_list = self._get_user_ids(driver)
             logging.info(f"There are {len(user_id_list)} users in total, there user_id is: {user_id_list}")
             time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
