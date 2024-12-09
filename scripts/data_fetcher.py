@@ -602,14 +602,16 @@ class DataFetcher:
         for i in days_element:
             day = i.find_element(By.XPATH, "td[1]/div").text
             usage = i.find_element(By.XPATH, "td[2]/div").text
-            dic = {'date': day, 'usage': float(usage)}
-            # 插入到数据库
-            try:
-                self.insert_data(dic)
-                logging.info(f"The electricity consumption of {usage}KWh on {day} has been successfully deposited into the database")
-            except Exception as e:
-                logging.debug(f"The electricity consumption of {day} failed to save to the database, which may already exist: {str(e)}")
-
+            if usage != "":
+                dic = {'date': day, 'usage': float(usage)}
+                # 插入到数据库
+                try:
+                    self.insert_data(dic)
+                    logging.info(f"The electricity consumption of {usage}KWh on {day} has been successfully deposited into the database")
+                except Exception as e:
+                    logging.debug(f"The electricity consumption of {day} failed to save to the database, which may already exist: {str(e)}")
+            else:
+                logging.info(f"The electricity consumption of {usage} get nothing")
         self.connect.close()
 
 
