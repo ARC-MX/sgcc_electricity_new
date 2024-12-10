@@ -59,32 +59,73 @@ def main():
 def run_task(data_fetcher: DataFetcher, sensor_updator: SensorUpdator):
     try:
         user_id_list, balance_list, last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list, month_list, month_usage_list, month_charge_list = data_fetcher.fetch()
-        # user_id_list, balance_list, last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list, month_list, month_usage_list, month_charge_list = ['123456'],[58.1],['2024-05-12'],[3.0],['239.1'],['533'],['2024-04-01-2024-04-30'],['118'],['52.93']
+        
+        if not user_id_list:
+            logging.error("Failed to get user IDs, task aborted")
+            return
+
         for i in range(0, len(user_id_list)):
-            profix = f"_{user_id_list[i]}" if len(user_id_list) > 1 else ""
-            if balance_list[i] is not None:
-                sensor_updator.update(BALANCE_SENSOR_NAME + profix, None, balance_list[i], BALANCE_UNIT)
-                logging.info(f"Check the electricity bill balance. When the balance is less than {BALANCE} CNY, the notification will be sent = {RECHARGE_NOTIFY}")
-                if balance_list[i] < BALANCE and RECHARGE_NOTIFY:
-                    for token in PUSHPLUS_TOKEN:
-                        title= '电费余额不足提醒' 
-                        content =f'您用户号{user_id_list[i]}的当前电费余额为：{balance_list[i]}元，请及时充值。' 
-                        url = 'http://www.pushplus.plus/send?token='+token+'&title='+title+'&content='+content
-                        requests.get(url)
-                        logging.info(f'The current balance of user id {user_id_list[i]} is {balance_list[i]} CNY less than {BALANCE}CNY, notice has been sent, please pay attention to check and recharge.')
-            if last_daily_usage_list[i] is not None:
-                sensor_updator.update(DAILY_USAGE_SENSOR_NAME + profix, last_daily_date_list[i], last_daily_usage_list[i], month=False)
-            if yearly_usage_list[i] is not None:
-                sensor_updator.update(YEARLY_USAGE_SENSOR_NAME + profix, None, yearly_usage_list[i], month=False)
-            if yearly_charge_list[i] is not None:
-                sensor_updator.update(YEARLY_CHARGE_SENSOR_NAME + profix, None, yearly_charge_list[i], month=False)
-            if month_charge_list[i] is not None:
-                sensor_updator.update(MONTH_CHARGE_SENSOR_NAME + profix, month_list[i], month_charge_list[i], month=True)
-            if month_usage_list[i] is not None:
-                sensor_updator.update(MONTH_USAGE_SENSOR_NAME + profix, month_list[i], month_usage_list[i], month=True)
-        logging.info("state-refresh task run successfully!")
+            try:
+                current_user_id = user_id_list[i]
+                profix = f"_{current_user_id}" if len(user_id_list) > 1 else ""
+                logging.info(f"开始更新用户 {current_user_id} 的数据")
+
+                # 更新电费余额并检查是否需要发送余额不足提醒
+                if balance_list[i] is not None:
+                    sensor_name = BALANCE_SENSOR_NAME + profix
+                    sensor_updator.update(sensor_name, None, balance_list[i])
+                    logging.info(f"电费余额传感器 {sensor_name} 更新成功: {balance_list[i]} CNY")
+                    
+                    if balance_list[i] < BALANCE and RECHARGE_NOTIFY:
+                        for token in PUSHPLUS_TOKEN:
+                            title = '电费余额不足提醒'
+                            content = f'您用户号{current_user_id}的当前电费余额为：{balance_list[i]}元，请及时充值。'
+                            url = 'http://www.pushplus.plus/send?token='+token+'&title='+title+'&content='+content
+                            try:
+                                requests.get(url)
+                                logging.info(f'已发送余额不足提醒,用户 {current_user_id} 当前余额 {balance_list[i]} CNY')
+                            except Exception as e:
+                                logging.error(f'发送余额不足提醒失败,用户 {current_user_id}: {str(e)}')
+
+                # 更新日用电量
+                if last_daily_usage_list[i] is not None:
+                    sensor_name = DAILY_USAGE_SENSOR_NAME + profix
+                    sensor_updator.update(sensor_name, last_daily_date_list[i], last_daily_usage_list[i], month=False)
+                    logging.info(f"日用电量传感器 {sensor_name} 更新成功: {last_daily_usage_list[i]} KWH")
+                
+                # 更新年度用电量
+                if yearly_usage_list[i] is not None:
+                    sensor_name = YEARLY_USAGE_SENSOR_NAME + profix
+                    sensor_updator.update(sensor_name, None, yearly_usage_list[i], month=False)
+                    logging.info(f"年度用电量传感器 {sensor_name} 更新成功: {yearly_usage_list[i]} KWH")
+                
+                # 更新年度电费
+                if yearly_charge_list[i] is not None:
+                    sensor_name = YEARLY_CHARGE_SENSOR_NAME + profix
+                    sensor_updator.update(sensor_name, None, yearly_charge_list[i], month=False)
+                    logging.info(f"年度电费传感器 {sensor_name} 更新成功: {yearly_charge_list[i]} CNY")
+                
+                # 更新月度电费
+                if month_charge_list[i] is not None:
+                    sensor_name = MONTH_CHARGE_SENSOR_NAME + profix
+                    sensor_updator.update(sensor_name, month_list[i], month_charge_list[i], month=True)
+                    logging.info(f"月度电费传感器 {sensor_name} 更新成功: {month_charge_list[i]} CNY")
+                
+                # 更新月度用电量
+                if month_usage_list[i] is not None:
+                    sensor_name = MONTH_USAGE_SENSOR_NAME + profix
+                    sensor_updator.update(sensor_name, month_list[i], month_usage_list[i], month=True)
+                    logging.info(f"月度用电量传感器 {sensor_name} 更新成功: {month_usage_list[i]} KWH")
+
+                logging.info(f"用户 {current_user_id} 的所有数据更新完成")
+
+            except Exception as e:
+                logging.error(f"更新用户 {current_user_id} 的数据失败: {str(e)}")
+                continue
+
+        logging.info("所有用户数据更新完成!")
     except Exception as e:
-        logging.error(f"state-refresh task failed, reason is {e}")
+        logging.error(f"数据更新任务失败: {str(e)}")
         traceback.print_exc()
 
 
