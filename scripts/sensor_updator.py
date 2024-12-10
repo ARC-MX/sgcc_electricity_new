@@ -25,7 +25,6 @@ class SensorUpdator:
         headers = {
             "Content-Type": "application-json",
             "Authorization": "Bearer " + token
-
         }
         if present_date is None:    #年数据
             request_body = {
@@ -50,12 +49,10 @@ class SensorUpdator:
                 }
             }
 
-        url = self.base_url + API_PATH + sensorName # /api/states/<entity_id>
-
+        url = self.base_url + API_PATH + sensorName
         try:
             response = requests.post(url, json=request_body, headers=headers)
-            logging.debug(
-                f"Homeassistant REST API invoke, POST on {url}. response[{response.status_code}]: {response.content}")
-            logging.info(f"Homeassistant sensor {sensorName} state updated: {sensorState}")
+            logging.info(f"Home Assistant REST API 调用成功: POST {url}, 响应状态码: {response.status_code}, 响应内容: {response.content.decode('utf-8')}")
+            logging.info(f"传感器 {sensorName} 状态已更新: {sensorState}")
         except Exception as e:
-            logging.error(f"Homeassistant REST API invoke failed, reason is {e}")
+            logging.error(f"Home Assistant REST API 调用失败: {str(e)}")

@@ -154,7 +154,6 @@ class DataFetcher:
         self.RETRY_TIMES_LIMIT = int(os.getenv("RETRY_TIMES_LIMIT"))
         self.LOGIN_EXPECTED_TIME = int(os.getenv("LOGIN_EXPECTED_TIME"))
         self.RETRY_WAIT_TIME_OFFSET_UNIT = int(os.getenv("RETRY_WAIT_TIME_OFFSET_UNIT"))
-        self.IGNORE_USER_ID = os.getenv("IGNORE_USER_ID").split(",")
 
     # @staticmethod
     def _click_button(self, driver, button_search_type, button_search_key):
@@ -242,8 +241,8 @@ class DataFetcher:
             return self._fetch()
         except Exception as e:
             traceback.print_exc()
-            logging.error(
-                f"Webdriver quit abnormly, reason: {e}. {self.RETRY_TIMES_LIMIT} retry times left.")
+            logging.error(f"Webdriver quit abnormally, reason: {e}")
+            return None, [], [], [], [], [], [], [], []
 
     def _fetch(self):
         """main logic here"""
@@ -258,6 +257,7 @@ class DataFetcher:
         logging.info("Webdriver initialized.")
 
         try:
+            # 登录操作(只执行一次)
             if DEBUG:
                 if self._login(driver,phone_code=True):
                     logging.info("login successed !")
@@ -270,23 +270,118 @@ class DataFetcher:
                     logging.info("login unsuccessed !")
             logging.info(f"Login successfully on {LOGIN_URL}")
             time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
+
+            # 获取户号列表
             user_id_list = self._get_user_ids(driver)
-            logging.info(f"Here are a total of {len(user_id_list)} userids, which are {user_id_list} among which [{self.IGNORE_USER_ID}] will be ignored.")
-            for item in self.IGNORE_USER_ID:
-                if item in user_id_list:
-                    user_id_list.remove(item)
-                else:
-                    logging.info(f"The user ID {item} is not in user_id_list")
+            logging.info(f"There are {len(user_id_list)} users in total, there user_id is: {user_id_list}")
             time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
-            balance_list = self._get_electric_balances(driver, user_id_list)  #
+
+            # 初始化数据列表
+            balance_list = []
+            last_daily_date_list = []
+            last_daily_usage_list = []
+            yearly_charge_list = []
+            yearly_usage_list = []
+            month_list = []
+            month_usage_list = []
+            month_charge_list = []
+
+            # 先获取所有户号的电费余额
+            driver.get(BALANCE_URL)
             time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
-            ### get data except electricity charge balance
-            last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list, month_list, month_usage_list, month_charge_list  = self._get_other_data(driver, user_id_list)
+            for i in range(1, len(user_id_list) + 1):
+                try:
+                    balance = self._get_eletric_balance(driver)
+                    if balance is None:
+                        logging.error(f"Get electricity charge balance for {user_id_list[i-1]} failed, pass")
+                    else:
+                        logging.info(f"Get electricity charge balance for {user_id_list[i-1]} successfully, balance is {balance} CNY.")
+                    balance_list.append(balance)
+
+                    if i != len(user_id_list):
+                        self._click_button(driver, By.CLASS_NAME, "el-input__suffix")
+                        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+                        self._click_button(driver, By.XPATH, f"//ul[@class='el-scrollbar__view el-select-dropdown__list']/li[{i + 1}]")
+                except Exception as e:
+                    logging.error(f"Failed to get balance for user {user_id_list[i-1]}: {str(e)}")
+                    balance_list.append(None)
+
+            # 切换到用电量页面获取其他数据
+            driver.get(ELECTRIC_USAGE_URL)
             time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
-            driver.quit()
+            for i in range(1, len(user_id_list) + 1):
+                try:
+                    current_user_id = user_id_list[i-1]
+                    
+                    # 获取年度数据
+                    yearly_usage, yearly_charge = self._get_yearly_data(driver)
+                    if yearly_usage is None:
+                        logging.error(f"Get year power usage for {current_user_id} failed, pass")
+                    else:
+                        logging.info(f"Get year power usage for {current_user_id} successfully, usage is {yearly_usage} kwh")
+                    if yearly_charge is None:
+                        logging.error(f"Get year power charge for {current_user_id} failed, pass")
+                    else:
+                        logging.info(f"Get year power charge for {current_user_id} successfully, yearly charge is {yearly_charge} CNY")
+
+                    # 获取月度数据
+                    month, month_usage, month_charge = self._get_month_usage(driver)
+                    if month is None:
+                        logging.error(f"Get month power usage for {current_user_id} failed, pass")
+                    else:
+                        for m in range(len(month)):
+                            logging.info(f"Get month power charge for {current_user_id} successfully, {month[m]} usage is {month_usage[m]} KWh, charge is {month_charge[m]} CNY.")
+
+                    # 获取日用电量
+                    last_daily_datetime, last_daily_usage = self._get_yesterday_usage(driver)
+                    if last_daily_usage is None:
+                        logging.error(f"Get daily power consumption for {current_user_id} failed, pass")
+                    else:
+                        logging.info(f"Get daily power consumption for {current_user_id} successfully, {last_daily_datetime} usage is {last_daily_usage} kwh.")
+
+                    # 如果启用了数据库存储
+                    if self.enable_database_storage:
+                        try:
+                            self.save_usage_data(driver, current_user_id)
+                        except Exception as e:
+                            logging.error(f"Failed to save usage data for {current_user_id}: {str(e)}")
+
+                    # 将数据添加到列表中
+                    last_daily_date_list.append(last_daily_datetime)
+                    last_daily_usage_list.append(last_daily_usage)
+                    yearly_charge_list.append(yearly_charge)
+                    yearly_usage_list.append(yearly_usage)
+                    month_list.append(month[-1] if month else None)
+                    month_charge_list.append(month_charge[-1] if month_charge else None)
+                    month_usage_list.append(month_usage[-1] if month_usage else None)
+
+                    # 切换到下一个户号
+                    if i != len(user_id_list):
+                        self._click_button(driver, By.CLASS_NAME, "el-input__suffix")
+                        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+                        self._click_button(driver, By.XPATH, f"//body/div[@class='el-select-dropdown el-popper']//ul[@class='el-scrollbar__view el-select-dropdown__list']/li[{i + 1}]")
+
+                except Exception as e:
+                    logging.error(f"Failed to get data for user {current_user_id}: {str(e)}")
+                    # 为失败的户号添加空值
+                    if len(last_daily_date_list) < i:
+                        last_daily_date_list.append(None)
+                    if len(last_daily_usage_list) < i:
+                        last_daily_usage_list.append(None)
+                    if len(yearly_charge_list) < i:
+                        yearly_charge_list.append(None)
+                    if len(yearly_usage_list) < i:
+                        yearly_usage_list.append(None)
+                    if len(month_list) < i:
+                        month_list.append(None)
+                    if len(month_charge_list) < i:
+                        month_charge_list.append(None)
+                    if len(month_usage_list) < i:
+                        month_usage_list.append(None)
+                    continue
 
             logging.info("Webdriver quit after fetching data successfully.")
-            return user_id_list, balance_list, last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list, month_list, month_usage_list, month_charge_list 
+            return user_id_list, balance_list, last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list, month_list, month_usage_list, month_charge_list
 
         finally:
             driver.quit()
