@@ -154,6 +154,7 @@ class DataFetcher:
         self.RETRY_TIMES_LIMIT = int(os.getenv("RETRY_TIMES_LIMIT"))
         self.LOGIN_EXPECTED_TIME = int(os.getenv("LOGIN_EXPECTED_TIME"))
         self.RETRY_WAIT_TIME_OFFSET_UNIT = int(os.getenv("RETRY_WAIT_TIME_OFFSET_UNIT"))
+        self.IGNORE_USER_ID = os.getenv("IGNORE_USER_ID").split(",")
 
     # @staticmethod
     def _click_button(self, driver, button_search_type, button_search_key):
@@ -270,7 +271,11 @@ class DataFetcher:
             logging.info(f"Login successfully on {LOGIN_URL}")
             time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
             user_id_list = self._get_user_ids(driver)
-            logging.info(f"There are {len(user_id_list)} users in total, there user_id is: {user_id_list}")
+            logging.info(f"Here are a total of {len(user_id_list)} userids, which are {user_id_list} among which {self.IGNORE_USER_ID} will be ignored.")
+            for item in self.IGNORE_USER_ID:
+                if item in user_id_list:
+                    user_id_list.remove(item)
+                    logging.info(f"The user ID {item} will be ignored in user_id_list")
             time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
             balance_list = self._get_electric_balances(driver, user_id_list)  #
             time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
@@ -370,12 +375,13 @@ class DataFetcher:
                         logging.debug(
                             f"Login failed, maybe caused by invalid captcha, {self.RETRY_TIMES_LIMIT - retry_times} retry times left.")
                 else:
-                    return False
+                    return True
             logging.error(f"Login failed, maybe caused by Sliding CAPTCHA recognition failed")
+        return False
 
         raise Exception(
             "Login failed, maybe caused by 1.incorrect phone_number and password, please double check. or 2. network, please mnodify LOGIN_EXPECTED_TIME in .env and run docker compose up --build.")
-        return True
+        
         
     def _get_electric_balances(self, driver, user_id_list):
 

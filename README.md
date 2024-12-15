@@ -100,6 +100,8 @@ vim .env
 PHONE_NUMBER="xxx" 
 # 修改为自己的登录密码
 PASSWORD="xxxx" 
+# 排除指定用户ID，如果出现一些不想检测的ID或者有些充电、发电帐号、可以使用这个环境变量，如果有多个就用","分隔，","之间不要有空格
+IGNORE_USER_ID=xxxxxxx,xxxxxxx,xxxxxxx
 
 # SQLite 数据库配置
 # or False 不启用数据库储存每日用电量数据。
@@ -151,9 +153,8 @@ PUSHPLUS_TOKEN=xxxxxxx,xxxxxxx,xxxxxxx
   image: registry.cn-hangzhou.aliyuncs.com/arcw/sgcc_electricity:latest 改为 arcw/sgcc_electricity:latest
 
 ```bash
-docker compose up --build 
-# 或者后台运行
-docker compose up -d --build
+后台运行
+docker compose up -d
 ```
 
 5. 更新容器及其代码
@@ -398,6 +399,7 @@ sensor:
 2024-06-13：SQLite替换MongoDB，原因是python自带SQLite3，不需要额外安装，也不再需要MongoDB镜像。
 2024-07-03：新增每天定时执行两次，添加配置默认增加近 7 天每日电量写入数据, 可修改为 30 天。
 2024-07-05：新增余额不足提醒功能。
+2024-12-10：新增忽略指定用户ID的功能：针对一些用户拥有充电或者发电账户，可以使用 IGNORE_USER_ID 环境变量忽略特定的ID。
 TO-DO
 
 - [X] 增加离线滑动验证码识别方案
