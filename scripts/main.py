@@ -28,10 +28,10 @@ def main():
         PASSWORD = os.getenv("PASSWORD")
         HASS_URL = os.getenv("HASS_URL")
         HASS_TOKEN = os.getenv("HASS_TOKEN")
-        JOB_START_TIME = os.getenv("JOB_START_TIME")
-        LOG_LEVEL = os.getenv("LOG_LEVEL")
+        JOB_START_TIME = os.getenv("JOB_START_TIME","07:00" )
+        LOG_LEVEL = os.getenv("LOG_LEVEL","INFO")
         VERSION = os.getenv("VERSION")
-        BALANCE = float(os.getenv("BALANCE"))
+        BALANCE = float(os.getenv("BALANCE", 10.0))
         PUSHPLUS_TOKEN = os.getenv("PUSHPLUS_TOKEN").split(",")
         RECHARGE_NOTIFY = os.getenv("RECHARGE_NOTIFY", "false").lower() == "true"
     except Exception as e:

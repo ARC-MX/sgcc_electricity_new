@@ -4,6 +4,7 @@ import re
 import subprocess
 import time
 import traceback
+import copy
 
 import random
 import base64
@@ -29,7 +30,6 @@ from PIL import Image
 from onnx import ONNX
 import platform
 
-DEBUG = False
 
 def __ease_out_expo(sep):
     if sep == 1:
@@ -150,11 +150,11 @@ class DataFetcher:
         else:
             logging.info("enable_database_storage is false, we will not store the data to the database.")
 
-        self.DRIVER_IMPLICITY_WAIT_TIME = int(os.getenv("DRIVER_IMPLICITY_WAIT_TIME"))
-        self.RETRY_TIMES_LIMIT = int(os.getenv("RETRY_TIMES_LIMIT"))
-        self.LOGIN_EXPECTED_TIME = int(os.getenv("LOGIN_EXPECTED_TIME"))
-        self.RETRY_WAIT_TIME_OFFSET_UNIT = int(os.getenv("RETRY_WAIT_TIME_OFFSET_UNIT"))
-        self.IGNORE_USER_ID = os.getenv("IGNORE_USER_ID").split(",")
+        self.DRIVER_IMPLICITY_WAIT_TIME = int(os.getenv("DRIVER_IMPLICITY_WAIT_TIME", 60))
+        self.RETRY_TIMES_LIMIT = int(os.getenv("RETRY_TIMES_LIMIT", 20))
+        self.LOGIN_EXPECTED_TIME = int(os.getenv("LOGIN_EXPECTED_TIME", 10))
+        self.RETRY_WAIT_TIME_OFFSET_UNIT = int(os.getenv("RETRY_WAIT_TIME_OFFSET_UNIT", 10))
+        self.IGNORE_USER_ID = os.getenv("IGNORE_USER_ID", "xxxxx,xxxxx").split(",")
 
     # @staticmethod
     def _click_button(self, driver, button_search_type, button_search_key):
@@ -162,7 +162,7 @@ class DataFetcher:
         click_element = driver.find_element(button_search_type, button_search_key)
         # logging.info(f"click_element:{button_search_key}.is_displayed() = {click_element.is_displayed()}\r")
         # logging.info(f"click_element:{button_search_key}.is_enabled() = {click_element.is_enabled()}\r")
-        WebDriverWait(driver, int(os.getenv("DRIVER_IMPLICITY_WAIT_TIME"))).until(EC.element_to_be_clickable(click_element))
+        WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(EC.element_to_be_clickable(click_element))
         driver.execute_script("arguments[0].click();", click_element)
 
     # @staticmethod
@@ -210,9 +210,10 @@ class DataFetcher:
         :param user_id: 用户ID"""
         try:
             # 创建数据库
-            self.connect = sqlite3.connect(os.getenv("DB_NAME"))
+            DB_NAME = os.getenv("DB_NAME", "homeassistant.db")
+            self.connect = sqlite3.connect(DB_NAME)
             self.connect.cursor()
-            logging.info(f"Database of {os.getenv('DB_NAME')} created successfully.")
+            logging.info(f"Database of {DB_NAME} created successfully.")
             try:
                 # 创建表名
                 self.db_name = f"daily{user_id}"
@@ -235,60 +236,6 @@ class DataFetcher:
                 self.connect.commit()
             except BaseException as e:
                 logging.debug(f"Data update failed: {e}")
-
-    def fetch(self):
-        """the entry, only retry logic here """
-        try:
-            return self._fetch()
-        except Exception as e:
-            traceback.print_exc()
-            logging.error(
-                f"Webdriver quit abnormly, reason: {e}. {self.RETRY_TIMES_LIMIT} retry times left.")
-
-    def _fetch(self):
-        """main logic here"""
-        if platform.system() == 'Windows':
-            driverfile_path = r'C:\Users\mxwang\Project\msedgedriver.exe'
-            driver = webdriver.Edge(executable_path=driverfile_path)
-        else:
-            driver = self._get_webdriver()
-        
-        driver.maximize_window() 
-        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
-        logging.info("Webdriver initialized.")
-
-        try:
-            if DEBUG:
-                if self._login(driver,phone_code=True):
-                    logging.info("login successed !")
-                else:
-                    logging.info("login unsuccessed !")
-            else:
-                if self._login(driver):
-                    logging.info("login successed !")
-                else:
-                    logging.info("login unsuccessed !")
-            logging.info(f"Login successfully on {LOGIN_URL}")
-            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
-            user_id_list = self._get_user_ids(driver)
-            logging.info(f"Here are a total of {len(user_id_list)} userids, which are {user_id_list} among which {self.IGNORE_USER_ID} will be ignored.")
-            for item in self.IGNORE_USER_ID:
-                if item in user_id_list:
-                    user_id_list.remove(item)
-                    logging.info(f"The user ID {item} will be ignored in user_id_list")
-            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
-            balance_list = self._get_electric_balances(driver, user_id_list)  #
-            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
-            ### get data except electricity charge balance
-            last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list, month_list, month_usage_list, month_charge_list  = self._get_other_data(driver, user_id_list)
-            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
-            driver.quit()
-
-            logging.info("Webdriver quit after fetching data successfully.")
-            return user_id_list, balance_list, last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list, month_list, month_usage_list, month_charge_list 
-
-        finally:
-            driver.quit()
 
     def _get_webdriver(self):
         chrome_options = Options()
@@ -382,105 +329,157 @@ class DataFetcher:
         raise Exception(
             "Login failed, maybe caused by 1.incorrect phone_number and password, please double check. or 2. network, please mnodify LOGIN_EXPECTED_TIME in .env and run docker compose up --build.")
         
-        
-    def _get_electric_balances(self, driver, user_id_list):
+    def fetch(self):
+        """the entry, only retry logic here """
+        try:
+            return self._fetch()
+        except Exception as e:
+            traceback.print_exc()
+            logging.error(
+                f"Webdriver quit abnormly, reason: {e}. {self.RETRY_TIMES_LIMIT} retry times left.")
+
+    def _fetch(self):
 
         balance_list = []
-
-        # switch to electricity charge balance page
-        driver.get(BALANCE_URL)
-        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
-        # get electricity charge balance for each user id
-        for i in range(1, len(user_id_list) + 1):
-            balance = self._get_eletric_balance(driver)
-            if (balance is None):
-                logging.info(f"Get electricity charge balance for {user_id_list[i - 1]} failed, Pass.")
-            else:
-                logging.info(
-                    f"Get electricity charge balance for {user_id_list[i - 1]} successfully, balance is {balance} CNY.")
-            balance_list.append(balance)
-
-            # swtich to next userid
-            if (i != len(user_id_list)):
-                self._click_button(driver, By.CLASS_NAME, "el-input__suffix")
-                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
-                self._click_button(driver, By.XPATH, f"//ul[@class='el-scrollbar__view el-select-dropdown__list']/li[{i + 1}]")
-
-        return balance_list
-
-    def _get_other_data(self, driver, user_id_list):
         last_daily_date_list = []
         last_daily_usage_list = []
-        yearly_usage_list = []
         yearly_charge_list = []
+        yearly_usage_list = []        
         month_list = []
         month_charge_list = []
         month_usage_list = []
-        # swithc to electricity usage page
-        driver.get(ELECTRIC_USAGE_URL)
 
-        # get data for each user id
-        for i in range(1, len(user_id_list) + 1):
 
-            yearly_usage, yearly_charge = self._get_yearly_data(driver)
+        """main logic here"""
+        if platform.system() == 'Windows':
+            driverfile_path = r'C:\Users\mxwang\Project\msedgedriver.exe'
+            driver = webdriver.Edge(executable_path=driverfile_path)
+        else:
+            driver = self._get_webdriver()
+        
+        driver.maximize_window() 
+        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+        logging.info("Webdriver initialized.")
 
-            if yearly_usage is None:
-                logging.error(f"Get year power usage for {user_id_list[i - 1]} failed, pass")
+        try:
+            if os.getenv("DEBUG_MODE", "false").lower() == "true":
+                if self._login(driver,phone_code=True):
+                    logging.info("login successed !")
+                else:
+                    logging.info("login unsuccessed !")
             else:
-                logging.info(
-                    f"Get year power usage for {user_id_list[i - 1]} successfully, usage is {yearly_usage} kwh")
-            if yearly_charge is None:
-                logging.error(f"Get year power charge for {user_id_list[i - 1]} failed, pass")
-            else:
-                logging.info(
-                    f"Get year power charge for {user_id_list[i - 1]} successfully, yealrly charge is {yearly_charge} CNY")
+                if self._login(driver):
+                    logging.info("login successed !")
+                else:
+                    logging.info("login unsuccessed !")
+            logging.info(f"Login successfully on {LOGIN_URL}")
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
+            user_id_list = self._get_user_ids(driver)
+            logging.info(f"Here are a total of {len(user_id_list)} userids, which are {user_id_list} among which {self.IGNORE_USER_ID} will be ignored.")
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
 
-            # get month usage
-            month, month_usage, month_charge = self._get_month_usage(driver)
-            if month is None:
-                logging.error(f"Get month power usage for {user_id_list[i - 1]} failed, pass")
-            else:
-                for m in range(len(month)):
-                    logging.info(
-                        f"Get month power charge for {user_id_list[i - 1]} successfully, {month[m]} usage is {month_usage[m]} KWh, charge is {month_charge[m]} CNY.")
-            # get yesterday usage
-            last_daily_datetime, last_daily_usage = self._get_yesterday_usage(driver)
+            current_userid_list = copy.deepcopy(user_id_list)
 
-            # 新增储存用电量
-            if self.enable_database_storage:
-                self.save_usage_data(driver, user_id_list[i - 1])
-
-            if last_daily_usage is None:
-                logging.error(f"Get daily power consumption for {user_id_list[i - 1]} failed, pass")
-            else:
-                logging.info(
-                    f"Get daily power consumption for {user_id_list[i - 1]} successfully, , {last_daily_datetime} usage is {last_daily_usage} kwh.")
-
-            last_daily_date_list.append(last_daily_datetime)
-            last_daily_usage_list.append(last_daily_usage)
-            yearly_charge_list.append(yearly_charge)
-            yearly_usage_list.append(yearly_usage)
-            if month:
-                month_list.append(month[-1])
-            else:
-                month_list.append(None)
-            if month_charge:
-                month_charge_list.append(month_charge[-1])
-            else:
-                month_charge_list.append(None)
-            if month_usage:
-                month_usage_list.append(month_usage[-1])
-            else:
-                month_usage_list.append(None)
-
-            # switch to next user id
-            if i != len(user_id_list):
+            for i, user_id in enumerate(user_id_list):            
+                # switch to electricity charge balance page
+                driver.get(BALANCE_URL) 
+                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
                 self._click_button(driver, By.CLASS_NAME, "el-input__suffix")
                 time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
-                self._click_button(driver, By.XPATH,
-                                   f"//body/div[@class='el-select-dropdown el-popper']//ul[@class='el-scrollbar__view el-select-dropdown__list']/li[{i + 1}]")
+                self._click_button(driver, By.XPATH, f"/html/body/div[2]/div[1]/div[1]/ul/li[{i+1}]/span")
+                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+                current_userid = self._get_current_userid(driver)
+                if current_userid in self.IGNORE_USER_ID:
+                    current_userid_list.remove(current_userid)
+                    logging.info(f"The user ID {current_userid} will be ignored in user_id_list")
+                    continue
+                else:
+                    ### get data 
+                    balance, last_daily_date, last_daily_usage, yearly_charge, yearly_usage, month_data, month_usage, month_charge  = self._get_all_data(driver, user_id)
+                    
+                    balance_list.append(balance)
+                    last_daily_date_list.append(last_daily_date)
+                    last_daily_usage_list.append(last_daily_usage)
+                    yearly_charge_list.append(yearly_charge)
+                    yearly_usage_list.append(yearly_usage)
+                    month_list.append(month_data)
+                    month_usage_list.append(month_usage)
+                    month_charge_list.append(month_charge)
+                    
+                    time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
 
-        return last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list, month_list, month_usage_list, month_charge_list
+            driver.quit()
+
+            logging.info("Webdriver quit after fetching data successfully.")
+            return current_userid_list, balance_list, last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list, month_list, month_usage_list, month_charge_list 
+
+        finally:
+            driver.quit()
+
+    def _get_current_userid(self, driver):
+        current_userid = driver.find_element(By.XPATH, '//*[@id="app"]/div/div/article/div/div/div[2]/div/div/div[1]/div[2]/div/div/div/div[2]/div/div[1]/div/ul/div/li[1]/span[2]').text
+        return current_userid
+
+
+    def _get_all_data(self, driver, user_id):
+        balance = self._get_electric_balance(driver)
+        if (balance is None):
+            logging.info(f"Get electricity charge balance for {user_id} failed, Pass.")
+        else:
+            logging.info(
+                f"Get electricity charge balance for {user_id} successfully, balance is {balance} CNY.")
+        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+        # swithc to electricity usage page
+        driver.get(ELECTRIC_USAGE_URL)
+        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+        # get data for each user id
+        yearly_usage, yearly_charge = self._get_yearly_data(driver)
+
+        if yearly_usage is None:
+            logging.error(f"Get year power usage for {user_id} failed, pass")
+        else:
+            logging.info(
+                f"Get year power usage for {user_id} successfully, usage is {yearly_usage} kwh")
+        if yearly_charge is None:
+            logging.error(f"Get year power charge for {user_id} failed, pass")
+        else:
+            logging.info(
+                f"Get year power charge for {user_id} successfully, yealrly charge is {yearly_charge} CNY")
+
+        # get month usage
+        month, month_usage, month_charge = self._get_month_usage(driver)
+        if month is None:
+            logging.error(f"Get month power usage for {user_id} failed, pass")
+        else:
+            for m in range(len(month)):
+                logging.info(
+                    f"Get month power charge for {user_id} successfully, {month[m]} usage is {month_usage[m]} KWh, charge is {month_charge[m]} CNY.")
+        # get yesterday usage
+        last_daily_datetime, last_daily_usage = self._get_yesterday_usage(driver)
+
+        # 新增储存用电量
+        if self.enable_database_storage:
+            self.save_daily_usage_data(driver, user_id)
+
+        if last_daily_usage is None:
+            logging.error(f"Get daily power consumption for {user_id} failed, pass")
+        else:
+            logging.info(
+                f"Get daily power consumption for {user_id} successfully, , {last_daily_datetime} usage is {last_daily_usage} kwh.")
+        if month:
+            month_data = month[-1]
+        else:
+            month_data = None
+        if month_charge:
+            month_charge = month_charge[-1]
+        else:
+            month_charge = None
+        if month_usage:
+            month_usage = month_usage[-1]
+        else:
+            month_usage = None
+
+        return balance, last_daily_datetime, last_daily_usage, yearly_charge, yearly_usage, month_data, month_usage, month_charge
 
     def _get_user_ids(self, driver):
 
@@ -500,7 +499,7 @@ class DataFetcher:
             userid_list.append(re.findall("[0-9]+", element.text)[-1])
         return userid_list
 
-    def _get_eletric_balance(self, driver):
+    def _get_electric_balance(self, driver):
         try:
             balance = driver.find_element(By.CLASS_NAME, "num").text
             return float(balance)
@@ -577,7 +576,7 @@ class DataFetcher:
             return None,None,None
 
     # 增加储存用电量的到mongodb的函数
-    def save_usage_data(self, driver, user_id):
+    def save_daily_usage_data(self, driver, user_id):
         """储存指定天数的用电量"""
         retention_days = int(os.getenv("DATA_RETENTION_DAYS", 7))  # 默认值为7天
 
@@ -619,9 +618,6 @@ class DataFetcher:
             else:
                 logging.info(f"The electricity consumption of {usage} get nothing")
         self.connect.close()
-
-
-
 
 if __name__ == "__main__":
     with open("bg.jpg", "rb") as f:

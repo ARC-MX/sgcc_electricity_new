@@ -7,7 +7,7 @@ ARG TARGETARCH
 ARG VERSION
 ENV VERSION=${VERSION}
 
-# COPY scripts/* /app/
+COPY scripts/* /app/
 WORKDIR /app
 
 RUN apt-get --allow-releaseinfo-change update \
