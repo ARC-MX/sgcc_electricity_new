@@ -4,6 +4,9 @@
 
 **注意** 有很多新手都在提交验证码不能识别的相关issue，特在此统一说明：国网每天有登录限制，每天只能登录有限的几次，超过限制验证码识别成功也不会登录成功。因此，诸如[issue47](https://github.com/ARC-MX/sgcc_electricity_new/issues/47),[issue50](https://github.com/ARC-MX/sgcc_electricity_new/issues/50),[issue29](https://github.com/ARC-MX/sgcc_electricity_new/issues/29)这些都是这个问题，以后就不做回复了。
 
+最近issue太多实在是回复不过来了，特此添加QQ交流群
+[关于创建QQ付费群的说明](https://github.com/ARC-MX/sgcc_electricity_new/issues/78)
+
 ### 支付宝&微信 打赏码
 
 <p align="center">
@@ -44,9 +47,7 @@
 
    得到如下结果：
 
-<p align="center">
 <img src="assets/database.png" alt="mini-graph-card" width="400">
-</p>
 ## 一、适用范围
 
 1. 适用于除南方电网覆盖省份外的用户。即除广东、广西、云南、贵州、海南等省份的用户外，均可使用本应用获取电力、电费数据。
@@ -413,8 +414,7 @@ TO-DO
 ## 入群方式
 
 通过为项目点star并微信打赏备注QQ名或QQ号等信息，入群会审核这些信息
-<p align="center">
+
 <img src="assets/QQ_group.jpg"  width=200 style="margin-right: 70px";/>
-</p>
 
 ## 再次说明，希望大家通过认真看文档和浏览历史issue解决问题，毕竟收费群不是开源项目的本意。
