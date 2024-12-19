@@ -4,7 +4,6 @@ import requests
 import os
 import sys
 import time
-import traceback
 from datetime import datetime,timedelta
 
 import dotenv
@@ -23,6 +22,7 @@ def main():
     global BALANCE
     global PUSHPLUS_TOKEN
     global RECHARGE_NOTIFY
+    global RETRY_TIMES_LIMIT
     try:
         PHONE_NUMBER = os.getenv("PHONE_NUMBER")
         PASSWORD = os.getenv("PASSWORD")
@@ -34,6 +34,7 @@ def main():
         BALANCE = float(os.getenv("BALANCE", 10.0))
         PUSHPLUS_TOKEN = os.getenv("PUSHPLUS_TOKEN").split(",")
         RECHARGE_NOTIFY = os.getenv("RECHARGE_NOTIFY", "false").lower() == "true"
+        RETRY_TIMES_LIMIT = int(os.getenv("RETRY_TIMES_LIMIT", 5))
     except Exception as e:
         logging.error(f"Failing to read the .env file, the program will exit with an error message: {e}.")
         sys.exit()
@@ -57,36 +58,37 @@ def main():
 
 
 def run_task(data_fetcher: DataFetcher, sensor_updator: SensorUpdator):
-    try:
-        user_id_list, balance_list, last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list, month_list, month_usage_list, month_charge_list = data_fetcher.fetch()
-        # user_id_list, balance_list, last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list, month_list, month_usage_list, month_charge_list = ['123456'],[58.1],['2024-05-12'],[3.0],['239.1'],['533'],['2024-04-01-2024-04-30'],['118'],['52.93']
-        for i in range(0, len(user_id_list)):
-            profix = f"_{user_id_list[i]}" if len(user_id_list) > 1 else ""
-            if balance_list[i] is not None:
-                sensor_updator.update(BALANCE_SENSOR_NAME + profix, None, balance_list[i], BALANCE_UNIT)
-                logging.info(f"Check the electricity bill balance. When the balance is less than {BALANCE} CNY, the notification will be sent = {RECHARGE_NOTIFY}")
-                if balance_list[i] < BALANCE and RECHARGE_NOTIFY:
-                    for token in PUSHPLUS_TOKEN:
-                        title= '电费余额不足提醒' 
-                        content =f'您用户号{user_id_list[i]}的当前电费余额为：{balance_list[i]}元，请及时充值。' 
-                        url = 'http://www.pushplus.plus/send?token='+token+'&title='+title+'&content='+content
-                        requests.get(url)
-                        logging.info(f'The current balance of user id {user_id_list[i]} is {balance_list[i]} CNY less than {BALANCE}CNY, notice has been sent, please pay attention to check and recharge.')
-            if last_daily_usage_list[i] is not None:
-                sensor_updator.update(DAILY_USAGE_SENSOR_NAME + profix, last_daily_date_list[i], last_daily_usage_list[i], month=False)
-            if yearly_usage_list[i] is not None:
-                sensor_updator.update(YEARLY_USAGE_SENSOR_NAME + profix, None, yearly_usage_list[i], month=False)
-            if yearly_charge_list[i] is not None:
-                sensor_updator.update(YEARLY_CHARGE_SENSOR_NAME + profix, None, yearly_charge_list[i], month=False)
-            if month_charge_list[i] is not None:
-                sensor_updator.update(MONTH_CHARGE_SENSOR_NAME + profix, month_list[i], month_charge_list[i], month=True)
-            if month_usage_list[i] is not None:
-                sensor_updator.update(MONTH_USAGE_SENSOR_NAME + profix, month_list[i], month_usage_list[i], month=True)
-        logging.info("state-refresh task run successfully!")
-    except Exception as e:
-        logging.error(f"state-refresh task failed, reason is {e}")
-        traceback.print_exc()
-
+    for retry_times in range(1, RETRY_TIMES_LIMIT + 1):
+        try:
+            user_id_list, balance_list, last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list, month_list, month_usage_list, month_charge_list = data_fetcher.fetch()
+            # user_id_list, balance_list, last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list, month_list, month_usage_list, month_charge_list = ['123456'],[58.1],['2024-05-12'],[3.0],['239.1'],['533'],['2024-04-01-2024-04-30'],['118'],['52.93']
+            for i in range(0, len(user_id_list)):
+                profix = f"_{user_id_list[i]}" if len(user_id_list) > 1 else ""
+                if balance_list[i] is not None:
+                    sensor_updator.update(BALANCE_SENSOR_NAME + profix, None, balance_list[i], BALANCE_UNIT)
+                    logging.info(f"Check the electricity bill balance. When the balance is less than {BALANCE} CNY, the notification will be sent = {RECHARGE_NOTIFY}")
+                    if balance_list[i] < BALANCE and RECHARGE_NOTIFY:
+                        for token in PUSHPLUS_TOKEN:
+                            title= '电费余额不足提醒' 
+                            content =f'您用户号{user_id_list[i]}的当前电费余额为：{balance_list[i]}元，请及时充值。' 
+                            url = 'http://www.pushplus.plus/send?token='+token+'&title='+title+'&content='+content
+                            requests.get(url)
+                            logging.info(f'The current balance of user id {user_id_list[i]} is {balance_list[i]} CNY less than {BALANCE}CNY, notice has been sent, please pay attention to check and recharge.')
+                if last_daily_usage_list[i] is not None:
+                    sensor_updator.update(DAILY_USAGE_SENSOR_NAME + profix, last_daily_date_list[i], last_daily_usage_list[i], month=False)
+                if yearly_usage_list[i] is not None:
+                    sensor_updator.update(YEARLY_USAGE_SENSOR_NAME + profix, None, yearly_usage_list[i], month=False)
+                if yearly_charge_list[i] is not None:
+                    sensor_updator.update(YEARLY_CHARGE_SENSOR_NAME + profix, None, yearly_charge_list[i], month=False)
+                if month_charge_list[i] is not None:
+                    sensor_updator.update(MONTH_CHARGE_SENSOR_NAME + profix, month_list[i], month_charge_list[i], month=True)
+                if month_usage_list[i] is not None:
+                    sensor_updator.update(MONTH_USAGE_SENSOR_NAME + profix, month_list[i], month_usage_list[i], month=True)
+            logging.info("state-refresh task run successfully!")
+            return
+        except Exception as e:
+            logging.error(f"state-refresh task failed, reason is [{e}], {RETRY_TIMES_LIMIT - retry_times} retry times left.")
+            continue
 
 def logger_init(level: str):
     logger = logging.getLogger()
