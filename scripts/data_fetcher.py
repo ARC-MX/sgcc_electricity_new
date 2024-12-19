@@ -380,33 +380,40 @@ class DataFetcher:
 
             current_userid_list = copy.deepcopy(user_id_list)
 
-            for i, user_id in enumerate(user_id_list):            
-                # switch to electricity charge balance page
-                driver.get(BALANCE_URL) 
-                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
-                self._click_button(driver, By.CLASS_NAME, "el-input__suffix")
-                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
-                self._click_button(driver, By.XPATH, f"/html/body/div[2]/div[1]/div[1]/ul/li[{i+1}]/span")
-                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
-                current_userid = self._get_current_userid(driver)
-                if current_userid in self.IGNORE_USER_ID:
-                    current_userid_list.remove(current_userid)
-                    logging.info(f"The user ID {current_userid} will be ignored in user_id_list")
-                    continue
-                else:
-                    ### get data 
-                    balance, last_daily_date, last_daily_usage, yearly_charge, yearly_usage, month_data, month_usage, month_charge  = self._get_all_data(driver, user_id)
-                    
-                    balance_list.append(balance)
-                    last_daily_date_list.append(last_daily_date)
-                    last_daily_usage_list.append(last_daily_usage)
-                    yearly_charge_list.append(yearly_charge)
-                    yearly_usage_list.append(yearly_usage)
-                    month_list.append(month_data)
-                    month_usage_list.append(month_usage)
-                    month_charge_list.append(month_charge)
-                    
+            for i, user_id in enumerate(user_id_list):           
+                try: 
+                    # switch to electricity charge balance page
+                    driver.get(BALANCE_URL) 
                     time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+                    self._click_button(driver, By.CLASS_NAME, "el-input__suffix")
+                    time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+                    self._click_button(driver, By.XPATH, f"/html/body/div[2]/div[1]/div[1]/ul/li[{i+1}]/span")
+                    time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+                    current_userid = self._get_current_userid(driver)
+                    if current_userid in self.IGNORE_USER_ID:
+                        current_userid_list.remove(current_userid)
+                        logging.info(f"The user ID {current_userid} will be ignored in user_id_list")
+                        continue
+                    else:
+                        ### get data 
+                        balance, last_daily_date, last_daily_usage, yearly_charge, yearly_usage, month_data, month_usage, month_charge  = self._get_all_data(driver, user_id)
+                        
+                        balance_list.append(balance)
+                        last_daily_date_list.append(last_daily_date)
+                        last_daily_usage_list.append(last_daily_usage)
+                        yearly_charge_list.append(yearly_charge)
+                        yearly_usage_list.append(yearly_usage)
+                        month_list.append(month_data)
+                        month_usage_list.append(month_usage)
+                        month_charge_list.append(month_charge)
+                        
+                        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+                except Exception as e:
+                    if (i != len(user_id_list)):
+                        logging.info(f"The current user {user_id} data fetching failed {e}, the next user data will be fetched.")
+                    else:
+                        logging.info(f"The user {user_id} data fetching failed, {e}")
+                    continue    
 
             driver.quit()
 
