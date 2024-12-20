@@ -25,18 +25,19 @@
 <img src="assets/image-20240514.jpg" alt="mini-graph-card" width="400">
 </p>
 
+## 简介
 本应用可以帮助你将国网的电费、用电量数据接入homeassistant，实现实时追踪家庭用电量情况；并且可以将每日用电量保存到数据库，历史有迹可循。具体提供两类数据：
 
 1. 在homeassistant以实体显示：
 
-   | 实体entity_id                     | 说明                                                                  |
-   | --------------------------------- | --------------------------------------------------------------------- |
-   | sensor.last_electricity_usage     | 最近一天用电量，单位KWH、度。属性含present_date（查询电量代表的日期） |
-   | sensor.electricity_charge_balance | 预付费显示电费余额，反之显示上月应交电费，单位元                      |
-   | sensor.yearly_electricity_usage   | 今年总用电量，单位KWH、度。                                           |
-   | sensor.yearly_electricity_charge  | 今年总用电费用，单位元                                                |
-   | sensor.month_electricity_usage    | 最近一天用电量，单位KWH、度。属性含present_date（查询电量代表的日期） |
-   | sensor.month_electricity_charge   | 上月总用电费用，单位元     属性含present_date（查询电量代表的日期）   |
+   | 实体entity_id                          | 说明                                                                  |
+   | -------------------------------------- | --------------------------------------------------------------------- |
+   | sensor.last_electricity_usage_xxxx     | 最近一天用电量，单位KWH、度。属性含present_date（查询电量代表的日期） |
+   | sensor.electricity_charge_balance_xxxx | 预付费显示电费余额，反之显示上月应交电费，单位元                      |
+   | sensor.yearly_electricity_usage_xxxx   | 今年总用电量，单位KWH、度。                                           |
+   | sensor.yearly_electricity_charge_xxxx  | 今年总用电费用，单位元                                                |
+   | sensor.month_electricity_usage_xxxx    | 最近一天用电量，单位KWH、度。属性含present_date（查询电量代表的日期） |
+   | sensor.month_electricity_charge_xxxx   | 上月总用电费用，单位元     属性含present_date（查询电量代表的日期）   |
 2. 可选，近三十天每日用电量数据（SQLite数据库）
    数据库表名为 daily+userid ，在项目路径下有个homeassistant.db  的数据库文件就是；
    如需查询可以用
@@ -49,7 +50,7 @@
 
 <img src="assets/database.png" alt="mini-graph-card" width="400">
 
-## 一、适用范围
+## 适用范围
 
 1. 适用于除南方电网覆盖省份外的用户。即除广东、广西、云南、贵州、海南等省份的用户外，均可使用本应用获取电力、电费数据。
 2. 不管是通过哪种哪种安装的homeassistant，只要可以运行python，有约1G硬盘空间和500M运行内存，都可以采用本仓库部署。
@@ -60,21 +61,25 @@
 > - `linux/arm64`：适用于 ARMv8 架构的 Linux 系统，例如树莓派3+，N1盒子等。
 > - `linux/armv7`，暂不提供 ARMv7 架构的 Linux 系统，例如树莓派2，玩客云等，主要原因是onnx-runtime没有armv7版本的库，用户可以参考 [https://github.com/nknytk/built-onnxruntime-for-raspberrypi-linux.git](https://github.com/nknytk/built-onnxruntime-for-raspberrypi-linux.git)自行安装库然后编译docker镜像。
 
-## 二、实现流程
+## 实现流程
 
 通过python的selenium包获取国家电网的数据，通过homeassistant的提供的[REST API](https://developers.home-assistant.io/docs/api/rest/)将采用POST请求将实体状态更新到homeassistant。
 
 国家电网添加了滑动验证码登录验证，我这边最早采取了调用商业API的方式，现在已经更新成了离线方案。利用Yolov3神经网络识别验证码，请大家放心使用。
 
-## 三、安装
+# 安装与部署
 
-### 1）注册国家电网账户
+## 1）注册国家电网账户
 
 首先要注册国家电网账户，绑定电表，并且可以手动查询电量
 
 注册网址：[https://www.95598.cn/osgweb/login](https://www.95598.cn/osgweb/login)
 
-### 2）docker镜像部署，速度快
+## 2）获取HA token
+
+  token获取方法参考[https://cloud.tencent.com/developer/article/2139538](https://cloud.tencent.com/developer/article/2139538)
+
+## 3）docker镜像部署，速度快
 
 1. 安装docker和homeassistant，[Homeassistant极简安装法](https://github.com/renhaiidea/easy-homeassistant)。
 2. 克隆仓库
@@ -93,7 +98,7 @@ cp example.env .env
 vim .env
 ```
 
-参考以下文件编写.env文件
+    参考以下文件编写.env文件
 
 ```bash
 ### 以下项都需要修改
@@ -193,120 +198,16 @@ docker compose up # 重新运行
 2024-06-06 16:02:07  [INFO    ] ---- 浏览器已退出
 ```
 
-## 四、配置与使用
+## 4）ha内数据展示
 
-### 1）**第一次运行需要创建并填写.env文件，按文件说明进行填写。**
-
-### 2）（可选）修改实体
-
-#### 填写homeassistant的配置文件
-
-由于采用REST API方式创建sensor，没有做实体注册，无法在webui里编辑。如果需要，你可以在configuration.yaml下增加如下配置后重启HA，这样你就可在webUI编辑对应的实体了，这样含有_entity后缀的实体就可以进行修改了。
-
-- 如果你有一个户号，参照以下配置：
-
-# Example configuration.yaml entry
-
-# 文件中只能有一个template
-
-```yml
-template:
-  - trigger:
-      - platform: event
-        event_type: state_changed
-        event_data:
-          entity_id: sensor.electricity_charge_balance
-    sensor:
-      - name: electricity_charge_balance_entity
-        unique_id: electricity_charge_balance_entity
-        state: "{{ states('sensor.electricity_charge_balance') }}"
-        state_class: total
-        unit_of_measurement: "CNY"
-        device_class: monetary
-
-  - trigger:
-      - platform: event
-        event_type: state_changed
-        event_data:
-          entity_id: sensor.last_electricity_usage
-    sensor:
-      - name: last_electricity_usage_entity
-        unique_id: last_electricity_usage_entity
-        state: "{{ states('sensor.last_electricity_usage') }}"
-        state_class: measurement
-        unit_of_measurement: "kWh"
-        device_class: energy
-
-  - trigger:
-      - platform: event
-        event_type: state_changed
-        event_data:
-          entity_id: sensor.month_electricity_usage
-    sensor:
-      - name: month_electricity_usage_entity
-        unique_id: month_electricity_usage_entity
-        state: "{{ states('sensor.month_electricity_usage') }}"
-        state_class: measurement
-        unit_of_measurement: "kWh"
-        device_class: energy
-
-  - trigger:
-      - platform: event
-        event_type: state_changed
-        event_data:
-          entity_id: sensor.month_electricity_charge
-    sensor:
-      - name: month_electricity_charge_entity
-        unique_id: month_electricity_charge_entity
-        state: "{{ states('sensor.month_electricity_charge') }}"
-        state_class: measurement
-        unit_of_measurement: "CNY"
-        device_class: monetary
-
-  - trigger:
-      - platform: event
-        event_type: state_changed
-        event_data:
-          entity_id: sensor.yearly_electricity_usage
-    sensor:
-      - name: yearly_electricity_usage_entity
-        unique_id: yearly_electricity_usage_entity
-        state: "{{ states('sensor.yearly_electricity_usage') }}"
-        state_class: total_increasing
-        unit_of_measurement: "kWh"
-        device_class: energy
-
-  - trigger:
-      - platform: event
-        event_type: state_changed
-        event_data:
-          entity_id: sensor.yearly_electricity_charge
-    sensor:
-      - name: yearly_electricity_charge_entity
-        unique_id: yearly_electricity_charge_entity
-        state: "{{ states('sensor.yearly_electricity_charge') }}"
-        state_class: total_increasing
-        unit_of_measurement: "CNY"
-        device_class: monetary
-
-```
-
-如果你有多个户号，每个户号参照[configuration.yaml](template/configuration.yaml)配置。
-
-- **注：如果你有一个户号，在HA里就是以上实体名；****如果你有多个户号，实体名称还要加 “_户号”后缀，举例:sensor.last_electricity_usage_1234567890**
-
-❗️`<u>`**进行自定义操作之后，请使用带entity的实体。比如使用sensor.last_electricity_usage_entity_1234567890而不是sensor.last_electricity_usage_1234567890。**`</u>`
-
-### 3）（可选）ha内数据展示
-
-结合mini-graph-card](https://github.com/kalkih/mini-graph-card) 和[mushroom](https://github.com/piitaya/lovelace-mushroom)实现效果：
+结合[mini-graph-card](https://github.com/kalkih/mini-graph-card) 和[mushroom](https://github.com/piitaya/lovelace-mushroom)实现效果：
 
 <img src="assets/image-20230731111757106.png" alt="image-20230731111757106.png" style="zoom: 33%;" />
 
 ```yaml
 type: custom:mini-graph-card
 entities:
-  - entity: sensor.last_electricity_usage_entity
+  - entity: sensor.last_electricity_usage_entity_xxxx
     name: 国网每日用电量
     aggregate_func: first
     show_state: true
@@ -316,77 +217,19 @@ hour24: true
 hours_to_show: 240
 ```
 
-### 4）（可选）配合用电阶梯，实现实时电价。
+可以在能源面板进行配置，对可以统计电量的设备实现计算用电量。
 
-![image-20230729172257731](assets/image-20230729172257731.png)
-
-#### 具体操作：
-
-修改homeassistant.yml文件然后重启或重载配置文件，注意当前阶梯中的sensor.yearly_electricity_usage_entity要根据你的实际情况修改：
-
-```yaml
-# 文件中只能有一个sensor
-sensor:
-  # 实时电价
-  - platform: template #平台名称
-    sensors: #传感器列表
-      real_time_electricity_price: #实体名称：只能用小写，下划线
-        unique_id: "real_time_electricity_price" #UID（必须）
-        friendly_name:  '实时电价' #在前端显示的传感器昵称（可选)
-        unit_of_measurement: "CNY/kWh" #传感器数值的单位（可选）
-        icon_template: mdi:currency-jpy #默认图标
-        value_template: > #定义一个获取传感器状态的模板（必须）下面的6和22是指6点和22点，"1""2""3"是指阶梯123，6个价格分别是3个阶梯的峰谷价格
-          {% if now().strftime("%H")| int >= 6 and now().strftime("%H")|int < 22 and states("sensor.current_ladder")=="1" %}
-            0.617
-          {%elif now().strftime("%H")| int >= 6 and now().strftime("%H")|int < 22 and states("sensor.current_ladder")=="2" %}
-            0.677
-          {%elif now().strftime("%H")| int >= 6 and now().strftime("%H")|int < 22 and states("sensor.current_ladder")=="3" %}
-            0.977
-          {% elif states("sensor.current_ladder")=="1" %}
-            0.307
-          {% elif states("sensor.current_ladder")=="2" %}
-            0.337
-          {% elif states("sensor.current_ladder")=="3" %}
-            0.487
-          {% endif %}
-
-# 当前阶梯
-  - platform: template
-    sensors:
-      current_ladder:
-        unique_id: "current_ladder"
-        friendly_name:  '当前阶梯'
-        unit_of_measurement: "级"
-        icon_template: mdi:elevation-rise
-        value_template: > #这里是上海的三个阶梯数值，第2阶梯3120，第三阶梯4800
-          {% if states("sensor.yearly_electricity_usage_entity") | float <= 3120 %}
-          1
-          {% elif states("sensor.yearly_electricity_usage_entity") | float >3120 and states("sensor.yearly_electricity_usage_entity") | float <= 4800 %}
-          2
-          {% else %}
-          3
-          {% endif %}
-```
-
-可以在能源面板进行配置，对可以统计电量的设备实现分阶梯计算用电量。
-
-> tip：打开ha>仪表盘>能源>添加用电数据>实时电价实体-选择real_time_electricity_price。
-
-<img src="assets/image-20230731111953612.png" alt="image-20230731111953612.png" style="zoom: 33%;" />
-
-### 5）电量通知
+## 5）电量通知
 
   更新电费余额不足提醒，在.env里设置提醒余额。目前我是用[pushplus](https://www.pushplus.plus/)的方案，注册pushplus然后，获取token，通知给谁就让谁注册并将token填到.env中
 
-## token获取方法参考[https://cloud.tencent.com/developer/article/2139538](https://cloud.tencent.com/developer/article/2139538)
-
-## 写在最后
+# 其他
 
 > 当前作者：[https://github.com/ARC-MX/sgcc_electricity_new](https://github.com/ARC-MX/sgcc_electricity_new)
 >
 > 原作者：[https://github.com/louisslee/sgcc_electricity](https://github.com/louisslee/sgcc_electricity)，原始[README_origin.md](归档/README_origin.md)。
 
-### 我的自定义部分包括：
+## 我的自定义部分包括：
 
 增加的部分：
 
@@ -396,7 +239,7 @@ sensor:
 - 给last_daily_usage增加present_date，用来确定更新的是哪一天的电量。一般查询的日期会晚一到两天。
 - 对configuration.yaml中自定义实体部分修改。
 
-# 重要修改通知
+## 重要修改通知
 
 2024-06-13：SQLite替换MongoDB，原因是python自带SQLite3，不需要额外安装，也不再需要MongoDB镜像。
 2024-07-03：新增每天定时执行两次，添加配置默认增加近 7 天每日电量写入数据, 可修改为 30 天。
@@ -408,14 +251,14 @@ TO-DO
 - [X] 添加默认推送服务，电费余额不足提醒
 - [ ] 。。。
 
-# **技术交流群**
+## **技术交流群**
 
 由于现在用户越来越多，稍有问题大家就在github上发issue，我有点回复不过来了，故创建一个付费加入的QQ群。该群只是方便大家讨论，不承诺技术协助，我想大多数用户参考历史issue和文档都能解决自己的问题
 
-## 入群方式
+### 入群方式
 
 通过为项目点star并微信打赏备注QQ名或QQ号等信息，入群会审核这些信息
 
 <img src="assets/QQ_group.jpg"  width=200 style="margin-right: 70px" >
 
-## 再次说明，希望大家通过认真看文档和浏览历史issue解决问题，毕竟收费群不是开源项目的本意。
+### 再次说明，希望大家通过认真看文档和浏览历史issue解决问题，毕竟收费群不是开源项目的本意。
