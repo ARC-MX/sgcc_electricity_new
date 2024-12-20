@@ -3,8 +3,6 @@ import os
 import re
 import subprocess
 import time
-import traceback
-import copy
 
 import random
 import base64
@@ -334,12 +332,12 @@ class DataFetcher:
         try:
             return self._fetch()
         except Exception as e:
-            traceback.print_exc()
             logging.error(
                 f"Webdriver quit abnormly, reason: {e}. {self.RETRY_TIMES_LIMIT} retry times left.")
 
     def _fetch(self):
 
+        vaild_userid_list = []
         balance_list = []
         last_daily_date_list = []
         last_daily_usage_list = []
@@ -378,7 +376,6 @@ class DataFetcher:
             logging.info(f"Here are a total of {len(user_id_list)} userids, which are {user_id_list} among which {self.IGNORE_USER_ID} will be ignored.")
             time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
 
-            current_userid_list = copy.deepcopy(user_id_list)
 
             for i, user_id in enumerate(user_id_list):           
                 try: 
@@ -391,13 +388,13 @@ class DataFetcher:
                     time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
                     current_userid = self._get_current_userid(driver)
                     if current_userid in self.IGNORE_USER_ID:
-                        current_userid_list.remove(current_userid)
                         logging.info(f"The user ID {current_userid} will be ignored in user_id_list")
                         continue
                     else:
                         ### get data 
                         balance, last_daily_date, last_daily_usage, yearly_charge, yearly_usage, month_data, month_usage, month_charge  = self._get_all_data(driver, user_id)
                         
+                        vaild_userid_list.append(user_id)
                         balance_list.append(balance)
                         last_daily_date_list.append(last_daily_date)
                         last_daily_usage_list.append(last_daily_usage)
@@ -418,7 +415,7 @@ class DataFetcher:
             driver.quit()
 
             logging.info("Webdriver quit after fetching data successfully.")
-            return current_userid_list, balance_list, last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list, month_list, month_usage_list, month_charge_list 
+            return vaild_userid_list, balance_list, last_daily_date_list, last_daily_usage_list, yearly_charge_list, yearly_usage_list, month_list, month_usage_list, month_charge_list 
 
         finally:
             driver.quit()
