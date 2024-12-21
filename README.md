@@ -26,6 +26,7 @@
 </p>
 
 ## 简介
+
 本应用可以帮助你将国网的电费、用电量数据接入homeassistant，实现实时追踪家庭用电量情况；并且可以将每日用电量保存到数据库，历史有迹可循。具体提供两类数据：
 
 1. 在homeassistant以实体显示：
@@ -95,10 +96,8 @@ cd sgcc_electricity_new
 
 ```bash
 cp example.env .env
-vim .env
+vim .env           # 参考以下文件编写.env文件
 ```
-
-    参考以下文件编写.env文件
 
 ```bash
 ### 以下项都需要修改
@@ -216,8 +215,6 @@ group_by: date
 hour24: true
 hours_to_show: 240
 ```
-
-可以在能源面板进行配置，对可以统计电量的设备实现计算用电量。
 
 ## 5）电量通知
 
