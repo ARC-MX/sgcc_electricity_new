@@ -4,58 +4,143 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
 import requests
+from sympy import true
 
 from const import *
 
 
 class SensorUpdator:
 
-    def __init__(self, base_url: str, token: str):
-        self.base_url = base_url[:-1] if base_url.endswith("/") else base_url
-        self.token = token
+    def __init__(self):
+        HASS_URL = os.getenv("HASS_URL")
+        HASS_TOKEN = os.getenv("HASS_TOKEN")
+        self.base_url = HASS_URL[:-1] if HASS_URL.endswith("/") else HASS_URL
+        self.token = HASS_TOKEN
+        self.BALANCE = float(os.getenv("BALANCE", 10.0))
+        self.PUSHPLUS_TOKEN = os.getenv("PUSHPLUS_TOKEN").split(",")
+        self.RECHARGE_NOTIFY = os.getenv("RECHARGE_NOTIFY", "false").lower() == "true"
 
-    def update(self, sensorName: str, present_date: str or None, sensorState: float, month=False):
-        """
-        Update the sensor state
-        :param sensorName: 此为id，不是name
-        :param present_date: 主要用于确定最近一次用电量所代表的日期
-        :return:
-        """
-        token = os.getenv("SUPERVISOR_TOKEN") if self.base_url == SUPERVISOR_URL else self.token
+    def update_one_userid(self, user_id: str, balance: float, last_daily_date: str, last_daily_usage: float, yearly_charge: float, yearly_usage: float, month_charge: float, month_usage: float):
+        postfix = f"_{user_id[-4:]}"
+        if balance is not None:
+            self.balance_notify(user_id, balance)
+            self.update_balance(postfix, balance)
+        if last_daily_usage is not None:
+            self.update_last_daily_usage(postfix, last_daily_date, last_daily_usage)
+        if yearly_usage is not None:
+            self.update_yearly_data(postfix, yearly_usage, usage=True)
+        if yearly_charge is not None:
+            self.update_yearly_data(postfix, yearly_charge)
+        if month_usage is not None:
+            self.update_month_data(postfix, month_usage, usage=True)
+        if month_charge is not None:
+            self.update_month_data(postfix, month_charge)
+
+        logging.info(f"User {user_id} state-refresh task run successfully!")
+
+    def update_last_daily_usage(self, postfix: str, last_daily_date: str, sensorState: float):
+        sensorName = DAILY_USAGE_SENSOR_NAME + postfix
+        request_body = {
+            "state": sensorState,
+            "unique_id": sensorName,
+            "attributes": {
+                "last_reset": last_daily_date,
+                "unit_of_measurement": "kWh",
+                "icon": "mdi:lightning-bolt",
+                "device_class": "energy",
+                "state_class": "measurement",
+            },
+        }
+
+        self.send_url(sensorName, request_body)
+        logging.info(f"Homeassistant sensor {sensorName} state updated: {sensorState} kWh")
+
+    def update_balance(self, postfix: str, sensorState: float):
+        sensorName = BALANCE_SENSOR_NAME + postfix
+        last_reset = datetime.now().strftime("%Y-%m-%d, %H:%M:%S")
+        request_body = {
+            "state": sensorState,
+            "unique_id": sensorName,
+            "attributes": {
+                "last_reset": last_reset,
+                "unit_of_measurement": "CNY",
+                "icon": "mdi:cash",
+                "device_class": "monetary",
+                "state_class": "total",
+            },
+        }
+
+        self.send_url(sensorName, request_body)
+        logging.info(f"Homeassistant sensor {sensorName} state updated: {sensorState} CNY")
+
+    def update_month_data(self, postfix: str, sensorState: float, usage=False):
+        sensorName = (
+            MONTH_USAGE_SENSOR_NAME + postfix
+            if usage
+            else MONTH_CHARGE_SENSOR_NAME + postfix
+        )
+        last_updated = datetime.now() - relativedelta(months=1)
+        last_reset = last_updated.strftime("%Y-%m")
+        request_body = {
+            "state": sensorState,
+            "unique_id": sensorName,
+            "attributes": {
+                "last_reset": last_reset,
+                "unit_of_measurement": "kWh" if usage else "CNY",
+                "icon": "mdi:lightning-bolt" if usage else "mdi:cash",
+                "device_class": "energy" if usage else "monetary",
+                "state_class": "measurement",
+            },
+        }
+
+        self.send_url(sensorName, request_body)
+        logging.info(f"Homeassistant sensor {sensorName} state updated: {sensorState} {'kWh' if usage else 'CNY'}")
+
+    def update_yearly_data(self, postfix: str, sensorState: float, usage=False):
+        sensorName = (
+            YEARLY_USAGE_SENSOR_NAME + postfix
+            if usage
+            else YEARLY_CHARGE_SENSOR_NAME + postfix
+        )
+        last_reset = datetime.now().strftime("%Y")
+        request_body = {
+            "state": sensorState,
+            "unique_id": sensorName,
+            "attributes": {
+                "last_reset": last_reset,
+                "unit_of_measurement": "kWh" if usage else "CNY",
+                "icon": "mdi:lightning-bolt" if usage else "mdi:cash",
+                "device_class": "energy" if usage else "monetary",
+                "state_class": "total_increasing",
+            },
+        }
+        self.send_url(sensorName, request_body)
+        logging.info(f"Homeassistant sensor {sensorName} state updated: {sensorState} {'kWh' if usage else 'CNY'}")
+
+    def send_url(self, sensorName, request_body):
         headers = {
             "Content-Type": "application-json",
-            "Authorization": "Bearer " + token
-
+            "Authorization": "Bearer " + self.token,
         }
-        if present_date is None:    #年数据
-            request_body = {
-                "state": sensorState,
-                "unique_id": sensorName,
-            }
-        elif month:             #月数据
-            last_updated = datetime.now()-relativedelta(months=1)
-            last_reset = last_updated.strftime("%Y-%m")
-            request_body = {
-                "state": sensorState,
-                "unique_id": sensorName,
-                "attributes": {
-                    "last_reset": last_reset
-                }
-            }
-        else:             #日数据
-            request_body = {
-                "state": sensorState,
-                "attributes": {
-                    "last_reset": present_date
-                }
-            }
-
-        url = self.base_url + API_PATH + sensorName # /api/states/<entity_id>
-
+        url = self.base_url + API_PATH + sensorName  # /api/states/<entity_id>
         try:
             response = requests.post(url, json=request_body, headers=headers)
             logging.debug(
-                f"Homeassistant REST API invoke, POST on {url}. response[{response.status_code}]: {response.content}")
-            logging.info(f"Homeassistant sensor {sensorName} state updated: {sensorState}")
+                f"Homeassistant REST API invoke, POST on {url}. response[{response.status_code}]: {response.content}"
+            )
         except Exception as e:
             logging.error(f"Homeassistant REST API invoke failed, reason is {e}")
+
+    def balance_notify(self, user_id, balance):
+        logging.info(
+            f"Check the electricity bill balance. When the balance is less than {self.BALANCE} CNY, the notification will be sent = {self.RECHARGE_NOTIFY}"
+        )
+        if balance < self.BALANCE and self.RECHARGE_NOTIFY:
+            for token in self.PUSHPLUS_TOKEN:
+                title = "电费余额不足提醒"
+                content = (f"您用户号{user_id}的当前电费余额为：{balance}元，请及时充值。" )
+                url = ("http://www.pushplus.plus/send?token="+ token+ "&title="+ title+ "&content="+ content)
+                requests.get(url)
+                logging.info(
+                    f"The current balance of user id {user_id} is {balance} CNY less than {self.BALANCE} CNY, notice has been sent, please pay attention to check and recharge."
+                )
