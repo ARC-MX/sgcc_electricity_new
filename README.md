@@ -1,4 +1,4 @@
-**重要说明：**原作者@renhai-lab 已于2023年10将项目归档，原仓库不再更新。这个版本是在原仓库基础上更新的。在此向原作者表达谢意和致敬。验证码识别已经从最开始的在线商业API替换成离线神经网络检测版本，请使用本仓库的同学点个小星星，或者打赏鼓励。
+**重要说明：**原作者@renhai-lab 已于2023年10将项目归档，原仓库不再更新。这个版本是在原仓库基础上大幅改动，在此向原作者表达谢意和致敬。验证码识别已经从最开始的在线商业API替换成离线神经网络检测版本，请使用本仓库的同学点个小星星，或者打赏鼓励。
 
 添加微信通知后，我想这基本上就是这个插件的最终形态了，docker镜像压缩到300MB，后续可能只会在网站变动或者出问题才会更新，再次感谢大家的Star。
 
@@ -26,6 +26,7 @@
 </p>
 
 ## 简介
+
 本应用可以帮助你将国网的电费、用电量数据接入homeassistant，实现实时追踪家庭用电量情况；并且可以将每日用电量保存到数据库，历史有迹可循。具体提供两类数据：
 
 1. 在homeassistant以实体显示：
@@ -95,10 +96,8 @@ cd sgcc_electricity_new
 
 ```bash
 cp example.env .env
-vim .env
+vim .env           # 参考以下文件编写.env文件
 ```
-
-    参考以下文件编写.env文件
 
 ```bash
 ### 以下项都需要修改
@@ -202,7 +201,7 @@ docker-compose up # 重新运行
 
 结合[mini-graph-card](https://github.com/kalkih/mini-graph-card) 和[mushroom](https://github.com/piitaya/lovelace-mushroom)实现效果：
 
-<img src="assets/image-20230731111757106.png" alt="image-20230731111757106.png" style="zoom: 33%;" />
+<img src="assets/Ha-mini-card.jpg" alt="Ha-mini-card.jpg" style="zoom: 50%;" />
 
 ```yaml
 type: custom:mini-graph-card
@@ -216,8 +215,6 @@ group_by: date
 hour24: true
 hours_to_show: 240
 ```
-
-可以在能源面板进行配置，对可以统计电量的设备实现计算用电量。
 
 ## 5）电量通知
 
