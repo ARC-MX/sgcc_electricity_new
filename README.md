@@ -204,16 +204,69 @@ docker-compose up # 重新运行
 <img src="assets/Ha-mini-card.jpg" alt="Ha-mini-card.jpg" style="zoom: 50%;" />
 
 ```yaml
-type: custom:mini-graph-card
-entities:
-  - entity: sensor.last_electricity_usage_entity_xxxx
-    name: 国网每日用电量
-    aggregate_func: first
-    show_state: true
-    show_points: true
-group_by: date
-hour24: true
-hours_to_show: 240
+cards:
+  - type: horizontal-stack
+    cards:
+      - animate: true
+        entities:
+          - entity: sensor.last_electricity_usage_0065
+            name: 国网每日用电量
+            aggregate_func: first
+            show_state: true
+            show_points: true
+        group_by: date
+        hour24: true
+        hours_to_show: 240
+        type: custom:mini-graph-card
+  - type: horizontal-stack
+    cards:
+      - animate: true
+        entities:
+          - entity: sensor.month_electricity_usage_0065
+            name: 当月用电量
+            aggregate_func: first
+            show_state: true
+            show_points: true
+        group_by: date
+        hour24: true
+        hours_to_show: 240
+        type: custom:mini-graph-card
+      - animate: true
+        entities:
+          - entity: sensor.electricity_charge_balance_0065
+            name: 电费余额
+            aggregate_func: first
+            show_state: true
+            show_points: true
+        group_by: date
+        hour24: true
+        hours_to_show: 240
+        type: custom:mini-graph-card
+  - type: horizontal-stack
+    cards:
+      - animate: true
+        entities:
+          - entity: sensor.yearly_electricity_usage_0065
+            name: 今年总用电量
+            aggregate_func: first
+            show_state: true
+            show_points: true
+        group_by: date
+        hour24: true
+        hours_to_show: 240
+        type: custom:mini-graph-card
+      - animate: true
+        entities:
+          - entity: sensor.yearly_electricity_charge_0065
+            name: 今年总用电费用
+            aggregate_func: first
+            show_state: true
+            show_points: true
+        group_by: date
+        hour24: true
+        hours_to_show: 240
+        type: custom:mini-graph-card
+type: vertical-stack
 ```
 
 ## 5）电量通知
