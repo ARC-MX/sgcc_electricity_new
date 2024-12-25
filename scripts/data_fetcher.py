@@ -163,7 +163,7 @@ class DataFetcher:
         :param user_id: 用户ID"""
         try:
             # 创建数据库
-            DB_NAME = os.getenv("DB_NAME", "homeassistant.db")
+            DB_NAME = os.getenv("DB_NAME", "./db/homeassistant.db")
             self.connect = sqlite3.connect(DB_NAME)
             self.connect.cursor()
             logging.info(f"Database of {DB_NAME} created successfully.")

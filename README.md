@@ -159,20 +159,12 @@ PUSHPLUS_TOKEN=xxxxxxx,xxxxxxx,xxxxxxx
   image: registry.cn-hangzhou.aliyuncs.com/arcw/sgcc_electricity:latest 改为 arcw/sgcc_electricity:latest
 
 ```bash
-后台运行
+运行获取传感器名称
 docker-compose up -d
+docker-compose logs sgcc_electricity_app
 ```
 
-5. 更新容器及其代码
-
-```bash
-docker-compose down # 删除容器
-docker-compose pull # 更新镜像
-git pull --tags origin master:master	#更新代码，代码不在容器中，所以要手动更新
-docker-compose up # 重新运行
-```
-
-6. 运行成功应该显示如下日志：
+运行成功应该显示如下日志：
 
 ```bash
 2024-06-06 16:00:43  [INFO    ] ---- 程序开始，当前仓库版本为1.x.x，仓库地址为https://github.com/ARC-MX/sgcc_electricity_new.git
@@ -193,13 +185,129 @@ docker-compose up # 重新运行
 2024-06-06 16:01:55  [INFO    ] ---- Get month power charge for xxxxxxx successfully, 2024-03-01-2024-03-31 usage is xxx KWh, charge is xxx CNY.
 2024-06-06 16:01:55  [INFO    ] ---- Get month power charge for xxxxxxx successfully, 2024-04-01-2024-04-30 usage is xxx KWh, charge is xxx CNY.
 2024-06-06 16:01:59  [INFO    ] ---- Get daily power consumption for xxxxxxx successfully, , 2024-06-05 usage is xxx kwh.
-2024-06-06 16:02:07  [INFO    ] ---- Webdriver quit after fetching data successfully.
-2024-06-06 16:02:07  [INFO    ] ---- 浏览器已退出
+........
+2024-12-25 13:43:25  [INFO    ] ---- Check the electricity bill balance. When the balance is less than 100.0 CNY, the notification will be sent = True
+2024-12-25 13:43:25  [INFO    ] ---- Homeassistant sensor sensor.electricity_charge_balance_xxxx state updated: 102.3 CNY
+2024-12-25 13:43:25  [INFO    ] ---- Homeassistant sensor sensor.last_electricity_usage_xxxx state updated: 6.56 kWh
+2024-12-25 13:43:25  [INFO    ] ---- Homeassistant sensor sensor.yearly_electricity_usage_xxxx state updated: 1691 kWh
+2024-12-25 13:43:25  [INFO    ] ---- Homeassistant sensor sensor.yearly_electricity_charge_xxxx state updated: 758.57 CNY
+2024-12-25 13:43:25  [INFO    ] ---- Homeassistant sensor sensor.month_electricity_usage_xxxx state updated: 169 kWh
+2024-12-25 13:43:25  [INFO    ] ---- Homeassistant sensor sensor.month_electricity_charge_xxxx state updated: 75.81 CNY
+2024-12-25 13:43:25  [INFO    ] ---- User xxxxxxx state-refresh task run successfully!
+```
+
+**sensor.electricity_charge_balance_xxxx 为余额传感器**
+
+5. 配置configuration.yaml文件, 将下面中的_xxxx 替换为自己log中的_xxxx后缀。
+
+```yaml
+template:
+  - trigger:
+      - platform: event
+        event_type: state_changed
+        event_data:
+          entity_id: sensor.electricity_charge_balance_xxxx
+    sensor:
+      - name: electricity_charge_balance_entity_xxxx
+        unique_id: electricity_charge_balance_entity_xxxx
+        state: "{{ states('sensor.electricity_charge_balance_xxxx') }}"
+        state_class: total
+        unit_of_measurement: "CNY"
+        device_class: monetary
+        restore_state: true
+
+  - trigger:
+      - platform: event
+        event_type: state_changed
+        event_data:
+          entity_id: sensor.last_electricity_usage_xxxx
+    sensor:
+      - name: last_electricity_usage_entity_xxxx
+        unique_id: last_electricity_usage_entity_xxxx
+        state: "{{ states('sensor.last_electricity_usage_xxxx') }}"
+        state_class: measurement
+        unit_of_measurement: "kWh"
+        device_class: energy
+        restore_state: true
+
+  - trigger:
+      - platform: event
+        event_type: state_changed
+        event_data:
+          entity_id: sensor.month_electricity_usage_xxxx
+    sensor:
+      - name: month_electricity_usage_entity_xxxx
+        unique_id: month_electricity_usage_entity_xxxx
+        state: "{{ states('sensor.month_electricity_usage_xxxx') }}"
+        state_class: measurement
+        unit_of_measurement: "kWh"
+        device_class: energy
+        restore_state: true
+
+  - trigger:
+      - platform: event
+        event_type: state_changed
+        event_data:
+          entity_id: sensor.month_electricity_charge_xxxx
+    sensor:
+      - name: month_electricity_charge_entity_xxxx
+        unique_id: month_electricity_charge_entity_xxxx
+        state: "{{ states('sensor.month_electricity_charge_xxxx') }}"
+        state_class: measurement
+        unit_of_measurement: "CNY"
+        device_class: monetary
+        restore_state: true
+
+  - trigger:
+      - platform: event
+        event_type: state_changed
+        event_data:
+          entity_id: sensor.yearly_electricity_usage_xxxx
+    sensor:
+      - name: yearly_electricity_usage_entity_xxxx
+        unique_id: yearly_electricity_usage_entity_xxxx
+        state: "{{ states('sensor.yearly_electricity_usage_xxxx') }}"
+        state_class: total_increasing
+        unit_of_measurement: "kWh"
+        device_class: energy
+        restore_state: true
+
+  - trigger:
+      - platform: event
+        event_type: state_changed
+        event_data:
+          entity_id: sensor.yearly_electricity_charge_xxxx
+    sensor:
+      - name: yearly_electricity_charge_entity_xxxx
+        unique_id: yearly_electricity_charge_entity_xxxx
+        state: "{{ states('sensor.yearly_electricity_charge_xxxx') }}"
+        state_class: total_increasing
+        unit_of_measurement: "CNY"
+        device_class: monetary
+        restore_state: true
+```
+
+配置完成后重启HA, 刷新一下HA界面
+
+<img src="assets/restart.jpg" alt="restart.jpg" style="zoom: 50%;" />
+
+
+
+6. 更新容器及其代码（需要更新才需要）
+
+```bash
+docker-compose down # 删除容器
+docker-compose pull # 更新镜像
+git pull --tags origin master:master	#更新代码，代码不在容器中，所以要手动更新
+docker-compose up -d # 重新运行
 ```
 
 ## 4）ha内数据展示
 
-结合[mini-graph-card](https://github.com/kalkih/mini-graph-card) 和[mushroom](https://github.com/piitaya/lovelace-mushroom)实现效果：
+
+<img src="assets/edit1.jpg" alt="edit1.jpg" style="zoom: 50%;" />
+
+结合[mini-graph-card](https://github.com/kalkih/mini-graph-card) 和[mushroom](https://github.com/piitaya/lovelace-mushroom)实现美化效果：
 
 <img src="assets/Ha-mini-card.jpg" alt="Ha-mini-card.jpg" style="zoom: 50%;" />
 
@@ -268,6 +376,7 @@ cards:
         type: custom:mini-graph-card
 type: vertical-stack
 ```
+
 
 ## 5）电量通知
 
