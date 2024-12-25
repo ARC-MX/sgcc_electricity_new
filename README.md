@@ -214,7 +214,6 @@ template:
         state_class: total
         unit_of_measurement: "CNY"
         device_class: monetary
-        restore_state: true
 
   - trigger:
       - platform: event
@@ -228,7 +227,6 @@ template:
         state_class: measurement
         unit_of_measurement: "kWh"
         device_class: energy
-        restore_state: true
 
   - trigger:
       - platform: event
@@ -242,7 +240,6 @@ template:
         state_class: measurement
         unit_of_measurement: "kWh"
         device_class: energy
-        restore_state: true
 
   - trigger:
       - platform: event
@@ -256,7 +253,6 @@ template:
         state_class: measurement
         unit_of_measurement: "CNY"
         device_class: monetary
-        restore_state: true
 
   - trigger:
       - platform: event
@@ -270,7 +266,6 @@ template:
         state_class: total_increasing
         unit_of_measurement: "kWh"
         device_class: energy
-        restore_state: true
 
   - trigger:
       - platform: event
@@ -284,7 +279,6 @@ template:
         state_class: total_increasing
         unit_of_measurement: "CNY"
         device_class: monetary
-        restore_state: true
 ```
 
 配置完成后重启HA, 刷新一下HA界面

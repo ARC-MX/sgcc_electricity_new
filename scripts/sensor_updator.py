@@ -16,8 +16,6 @@ class SensorUpdator:
         HASS_TOKEN = os.getenv("HASS_TOKEN")
         self.base_url = HASS_URL[:-1] if HASS_URL.endswith("/") else HASS_URL
         self.token = HASS_TOKEN
-        self.BALANCE = float(os.getenv("BALANCE", 10.0))
-        self.PUSHPLUS_TOKEN = os.getenv("PUSHPLUS_TOKEN").split(",")
         self.RECHARGE_NOTIFY = os.getenv("RECHARGE_NOTIFY", "false").lower() == "true"
 
     def update_one_userid(self, user_id: str, balance: float, last_daily_date: str, last_daily_usage: float, yearly_charge: float, yearly_usage: float, month_charge: float, month_usage: float):
@@ -49,7 +47,6 @@ class SensorUpdator:
                 "icon": "mdi:lightning-bolt",
                 "device_class": "energy",
                 "state_class": "measurement",
-                "restore_state": True
             },
         }
 
@@ -68,7 +65,6 @@ class SensorUpdator:
                 "icon": "mdi:cash",
                 "device_class": "monetary",
                 "state_class": "total",
-                "restore_state": True
             },
         }
 
@@ -92,7 +88,6 @@ class SensorUpdator:
                 "icon": "mdi:lightning-bolt" if usage else "mdi:cash",
                 "device_class": "energy" if usage else "monetary",
                 "state_class": "measurement",
-                "restore_state": True
             },
         }
 
@@ -115,7 +110,6 @@ class SensorUpdator:
                 "icon": "mdi:lightning-bolt" if usage else "mdi:cash",
                 "device_class": "energy" if usage else "monetary",
                 "state_class": "total_increasing",
-                "restore_state": True
             },
         }
         self.send_url(sensorName, request_body)
@@ -139,7 +133,13 @@ class SensorUpdator:
         logging.info(
             f"Check the electricity bill balance. When the balance is less than {self.BALANCE} CNY, the notification will be sent = {self.RECHARGE_NOTIFY}"
         )
-        if balance < self.BALANCE and self.RECHARGE_NOTIFY:
+
+        if self.RECHARGE_NOTIFY :
+            self.BALANCE = float(os.getenv("BALANCE", 10.0))
+            self.PUSHPLUS_TOKEN = os.getenv("PUSHPLUS_TOKEN").split(",")
+        else :
+            return
+        if balance < self.BALANCE :
             for token in self.PUSHPLUS_TOKEN:
                 title = "电费余额不足提醒"
                 content = (f"您用户号{user_id}的当前电费余额为：{balance}元，请及时充值。" )
