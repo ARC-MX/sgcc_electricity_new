@@ -1,5 +1,5 @@
 services:
-  app:
+  sgcc_electricity_app:
     env_file:
       - .env
     image: registry.cn-hangzhou.aliyuncs.com/arcw/sgcc_electricity:latest # for use docker.io: arcw/sgcc_electricity:latest
@@ -14,7 +14,7 @@ services:
       - CONTAINER_TIMEZONE=Asia/Shanghai
     restart: unless-stopped
     # volumes:
-    #   - ./scripts:/app
+    #   - ./:/app/db/
     command: python3 main.py 
 
 networks:

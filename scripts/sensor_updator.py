@@ -49,6 +49,7 @@ class SensorUpdator:
                 "icon": "mdi:lightning-bolt",
                 "device_class": "energy",
                 "state_class": "measurement",
+                "restore_state": True
             },
         }
 
@@ -67,6 +68,7 @@ class SensorUpdator:
                 "icon": "mdi:cash",
                 "device_class": "monetary",
                 "state_class": "total",
+                "restore_state": True
             },
         }
 
@@ -90,6 +92,7 @@ class SensorUpdator:
                 "icon": "mdi:lightning-bolt" if usage else "mdi:cash",
                 "device_class": "energy" if usage else "monetary",
                 "state_class": "measurement",
+                "restore_state": True
             },
         }
 
@@ -112,6 +115,7 @@ class SensorUpdator:
                 "icon": "mdi:lightning-bolt" if usage else "mdi:cash",
                 "device_class": "energy" if usage else "monetary",
                 "state_class": "total_increasing",
+                "restore_state": True
             },
         }
         self.send_url(sensorName, request_body)
