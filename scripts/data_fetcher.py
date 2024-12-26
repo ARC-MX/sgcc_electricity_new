@@ -1,3 +1,4 @@
+from ast import Try
 import logging
 import os
 import re
@@ -302,15 +303,17 @@ class DataFetcher:
                     logging.info("login successed !")
                 else:
                     logging.info("login unsuccessed !")
-            logging.info(f"Login successfully on {LOGIN_URL}")
-            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
-            user_id_list = self._get_user_ids(driver)
-            logging.info(f"Here are a total of {len(user_id_list)} userids, which are {user_id_list} among which {self.IGNORE_USER_ID} will be ignored.")
-            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
         except Exception as e:
             logging.error(
                 f"Webdriver quit abnormly, reason: {e}. {self.RETRY_TIMES_LIMIT} retry times left.")
             driver.quit()
+
+        logging.info(f"Login successfully on {LOGIN_URL}")
+        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
+        user_id_list = self._get_user_ids(driver)
+        logging.info(f"Here are a total of {len(user_id_list)} userids, which are {user_id_list} among which {self.IGNORE_USER_ID} will be ignored.")
+        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+
 
         for userid_index, user_id in enumerate(user_id_list):           
             try: 
@@ -408,21 +411,32 @@ class DataFetcher:
         return balance, last_daily_date, last_daily_usage, yearly_charge, yearly_usage, month_charge, month_usage
 
     def _get_user_ids(self, driver):
-        # click roll down button for user id
-        self._click_button(driver, By.XPATH, "//div[@class='el-dropdown']/span")
-        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
-        # wait for roll down menu displayed
-        target = driver.find_element(By.CLASS_NAME, "el-dropdown-menu.el-popper").find_element(By.TAG_NAME, "li")
-        WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(EC.visibility_of(target))
-        WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(
-            EC.text_to_be_present_in_element((By.XPATH, "//ul[@class='el-dropdown-menu el-popper']/li"), ":"))
+        try:
+            # click roll down button for user id
+            self._click_button(driver, By.XPATH, "//div[@class='el-dropdown']/span")
+            logging.debug(f'''self._click_button(driver, By.XPATH, "//div[@class='el-dropdown']/span")''')
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+            # wait for roll down menu displayed
+            target = driver.find_element(By.CLASS_NAME, "el-dropdown-menu.el-popper").find_element(By.TAG_NAME, "li")
+            logging.debug(f'''target = driver.find_element(By.CLASS_NAME, "el-dropdown-menu.el-popper").find_element(By.TAG_NAME, "li")''')
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+            WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(EC.visibility_of(target))
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+            logging.debug(f'''WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(EC.visibility_of(target))''')
+            WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(
+                EC.text_to_be_present_in_element((By.XPATH, "//ul[@class='el-dropdown-menu el-popper']/li"), ":"))
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
 
-        # get user id one by one
-        userid_elements = driver.find_element(By.CLASS_NAME, "el-dropdown-menu.el-popper").find_elements(By.TAG_NAME, "li")
-        userid_list = []
-        for element in userid_elements:
-            userid_list.append(re.findall("[0-9]+", element.text)[-1])
-        return userid_list
+            # get user id one by one
+            userid_elements = driver.find_element(By.CLASS_NAME, "el-dropdown-menu.el-popper").find_elements(By.TAG_NAME, "li")
+            userid_list = []
+            for element in userid_elements:
+                userid_list.append(re.findall("[0-9]+", element.text)[-1])
+            return userid_list
+        except Exception as e:
+            logging.error(
+                f"Webdriver quit abnormly, reason: {e}. get user_id list failed.")
+            driver.quit()
 
     def _get_electric_balance(self, driver):
         try:

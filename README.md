@@ -78,7 +78,7 @@
 
 ## 2）获取HA token
 
-  token获取方法参考[https://cloud.tencent.com/developer/article/2139538](https://cloud.tencent.com/developer/article/2139538)
+  token获取方法参考[https://blog.csdn.net/qq_25886111/article/details/106282492](https://blog.csdn.net/qq_25886111/article/details/106282492)
 
 ## 3）docker镜像部署，速度快
 
@@ -285,8 +285,6 @@ template:
 
 <img src="assets/restart.jpg" alt="restart.jpg" style="zoom: 50%;" />
 
-
-
 6. 更新容器及其代码（需要更新才需要）
 
 ```bash
@@ -297,7 +295,6 @@ docker-compose up -d # 重新运行
 ```
 
 ## 4）ha内数据展示
-
 
 <img src="assets/edit1.jpg" alt="edit1.jpg" style="zoom: 50%;" />
 
@@ -371,10 +368,10 @@ cards:
 type: vertical-stack
 ```
 
-
 ## 5）电量通知
 
   更新电费余额不足提醒，在.env里设置提醒余额。目前我是用[pushplus](https://www.pushplus.plus/)的方案，注册pushplus然后，获取token，通知给谁就让谁注册并将token填到.env中
+  token获取方法参考[https://cloud.tencent.com/developer/article/2139538](https://cloud.tencent.com/developer/article/2139538)
 
 # 其他
 
