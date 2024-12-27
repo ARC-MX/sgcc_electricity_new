@@ -130,12 +130,12 @@ class SensorUpdator:
             logging.error(f"Homeassistant REST API invoke failed, reason is {e}")
 
     def balance_notify(self, user_id, balance):
+        self.BALANCE = float(os.getenv("BALANCE", 10.0))
         logging.info(
             f"Check the electricity bill balance. When the balance is less than {self.BALANCE} CNY, the notification will be sent = {self.RECHARGE_NOTIFY}"
         )
 
         if self.RECHARGE_NOTIFY :
-            self.BALANCE = float(os.getenv("BALANCE", 10.0))
             self.PUSHPLUS_TOKEN = os.getenv("PUSHPLUS_TOKEN").split(",")
         else :
             return
