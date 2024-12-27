@@ -14,7 +14,7 @@ services:
       - CONTAINER_TIMEZONE=Asia/Shanghai
     restart: unless-stopped
     # volumes:
-    #   - ./:/app/db/
+    #   - ./:/app/homeassistant.db        # if you want to read homeassistant.db 
     command: python3 main.py 
 
 networks:

@@ -1,3 +1,4 @@
+from ast import Try
 import logging
 import os
 import re
@@ -97,11 +98,7 @@ class DataFetcher:
         # 获取 ENABLE_DATABASE_STORAGE 的值，默认为 False
         self.enable_database_storage = os.getenv("ENABLE_DATABASE_STORAGE", "false").lower() == "true"
 
-        if self.enable_database_storage:
-            # 将数据存储到数据库
-            logging.info("enable_database_storage is true, we will store the data to the database.")
-        else:
-            logging.info("enable_database_storage is false, we will not store the data to the database.")
+
 
         self.DRIVER_IMPLICITY_WAIT_TIME = int(os.getenv("DRIVER_IMPLICITY_WAIT_TIME", 60))
         self.RETRY_TIMES_LIMIT = int(os.getenv("RETRY_TIMES_LIMIT", 5))
@@ -163,28 +160,27 @@ class DataFetcher:
         :param user_id: 用户ID"""
         try:
             # 创建数据库
-            DB_NAME = os.getenv("DB_NAME", "./db/homeassistant.db")
+            DB_NAME = os.getenv("DB_NAME", "homeassistant.db")
             self.connect = sqlite3.connect(DB_NAME)
             self.connect.cursor()
             logging.info(f"Database of {DB_NAME} created successfully.")
-            try:
-                # 创建表名
-                self.db_name = f"daily{user_id}"
-                sql = f"CREATE TABLE {self.db_name} (date DATE PRIMARY KEY NOT NULL, usage REAL NOT NULL);"
-                self.connect.execute(sql)
-                logging.info(f"Table {self.db_name} created successfully")
-            except BaseException as e:
-                logging.debug(f"Table {self.db_name} already exists: {e}")
+            # 创建表名
+            self.table_name = f"daily{user_id}"
+            sql = f'''CREATE TABLE IF NOT EXISTS {self.table_name} (
+                    date DATE PRIMARY KEY NOT NULL, 
+                    usage REAL NOT NULL)'''
+            self.connect.execute(sql)
+            logging.info(f"Table {self.table_name} created successfully")
         # 如果表已存在，则不会创建
-        except BaseException as e:
-            logging.debug(f"Table: {self.db_name} already exists:{e}")
+        except sqlite3.Error as e:
+            logging.debug(f"Create db or Table error:{e}")
         finally:
             return self.connect
 
     def insert_data(self, data:dict):
             # 创建索引
             try:
-                sql = f"INSERT OR REPLACE INTO {self.db_name} VALUES(strftime('%Y-%m-%d','{data['date']}'),{data['usage']});"
+                sql = f"INSERT OR REPLACE INTO {self.table_name} VALUES(strftime('%Y-%m-%d','{data['date']}'),{data['usage']});"
                 self.connect.execute(sql)
                 self.connect.commit()
             except BaseException as e:
@@ -302,15 +298,18 @@ class DataFetcher:
                     logging.info("login successed !")
                 else:
                     logging.info("login unsuccessed !")
-            logging.info(f"Login successfully on {LOGIN_URL}")
-            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
-            user_id_list = self._get_user_ids(driver)
-            logging.info(f"Here are a total of {len(user_id_list)} userids, which are {user_id_list} among which {self.IGNORE_USER_ID} will be ignored.")
-            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
         except Exception as e:
             logging.error(
                 f"Webdriver quit abnormly, reason: {e}. {self.RETRY_TIMES_LIMIT} retry times left.")
             driver.quit()
+
+        logging.info(f"Login successfully on {LOGIN_URL}")
+        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
+        logging.info(f"Try to get the userid list")
+        user_id_list = self._get_user_ids(driver)
+        logging.info(f"Here are a total of {len(user_id_list)} userids, which are {user_id_list} among which {self.IGNORE_USER_ID} will be ignored.")
+        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+
 
         for userid_index, user_id in enumerate(user_id_list):           
             try: 
@@ -389,7 +388,11 @@ class DataFetcher:
 
         # 新增储存用电量
         if self.enable_database_storage:
+            # 将数据存储到数据库
+            logging.info("enable_database_storage is true, we will store the data to the database.")
             self.save_daily_usage_data(driver, user_id)
+        else:
+            logging.info("enable_database_storage is false, we will not store the data to the database.")
 
         if last_daily_usage is None:
             logging.error(f"Get daily power consumption for {user_id} failed, pass")
@@ -408,21 +411,32 @@ class DataFetcher:
         return balance, last_daily_date, last_daily_usage, yearly_charge, yearly_usage, month_charge, month_usage
 
     def _get_user_ids(self, driver):
-        # click roll down button for user id
-        self._click_button(driver, By.XPATH, "//div[@class='el-dropdown']/span")
-        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
-        # wait for roll down menu displayed
-        target = driver.find_element(By.CLASS_NAME, "el-dropdown-menu.el-popper").find_element(By.TAG_NAME, "li")
-        WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(EC.visibility_of(target))
-        WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(
-            EC.text_to_be_present_in_element((By.XPATH, "//ul[@class='el-dropdown-menu el-popper']/li"), ":"))
+        try:
+            # click roll down button for user id
+            self._click_button(driver, By.XPATH, "//div[@class='el-dropdown']/span")
+            logging.debug(f'''self._click_button(driver, By.XPATH, "//div[@class='el-dropdown']/span")''')
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+            # wait for roll down menu displayed
+            target = driver.find_element(By.CLASS_NAME, "el-dropdown-menu.el-popper").find_element(By.TAG_NAME, "li")
+            logging.debug(f'''target = driver.find_element(By.CLASS_NAME, "el-dropdown-menu.el-popper").find_element(By.TAG_NAME, "li")''')
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+            WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(EC.visibility_of(target))
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+            logging.debug(f'''WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(EC.visibility_of(target))''')
+            WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(
+                EC.text_to_be_present_in_element((By.XPATH, "//ul[@class='el-dropdown-menu el-popper']/li"), ":"))
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
 
-        # get user id one by one
-        userid_elements = driver.find_element(By.CLASS_NAME, "el-dropdown-menu.el-popper").find_elements(By.TAG_NAME, "li")
-        userid_list = []
-        for element in userid_elements:
-            userid_list.append(re.findall("[0-9]+", element.text)[-1])
-        return userid_list
+            # get user id one by one
+            userid_elements = driver.find_element(By.CLASS_NAME, "el-dropdown-menu.el-popper").find_elements(By.TAG_NAME, "li")
+            userid_list = []
+            for element in userid_elements:
+                userid_list.append(re.findall("[0-9]+", element.text)[-1])
+            return userid_list
+        except Exception as e:
+            logging.error(
+                f"Webdriver quit abnormly, reason: {e}. get user_id list failed.")
+            driver.quit()
 
     def _get_electric_balance(self, driver):
         try:

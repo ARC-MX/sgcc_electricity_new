@@ -130,21 +130,22 @@ class SensorUpdator:
             logging.error(f"Homeassistant REST API invoke failed, reason is {e}")
 
     def balance_notify(self, user_id, balance):
-        logging.info(
-            f"Check the electricity bill balance. When the balance is less than {self.BALANCE} CNY, the notification will be sent = {self.RECHARGE_NOTIFY}"
-        )
 
         if self.RECHARGE_NOTIFY :
-            self.BALANCE = float(os.getenv("BALANCE", 10.0))
-            self.PUSHPLUS_TOKEN = os.getenv("PUSHPLUS_TOKEN").split(",")
+            BALANCE = float(os.getenv("BALANCE", 10.0))
+            PUSHPLUS_TOKEN = os.getenv("PUSHPLUS_TOKEN").split(",")        
+            logging.info(f"Check the electricity bill balance. When the balance is less than {BALANCE} CNY, the notification will be sent = {self.RECHARGE_NOTIFY}")
+            if balance < BALANCE :
+                for token in PUSHPLUS_TOKEN:
+                    title = "电费余额不足提醒"
+                    content = (f"您用户号{user_id}的当前电费余额为：{balance}元，请及时充值。" )
+                    url = ("http://www.pushplus.plus/send?token="+ token+ "&title="+ title+ "&content="+ content)
+                    requests.get(url)
+                    logging.info(
+                        f"The current balance of user id {user_id} is {balance} CNY less than {BALANCE} CNY, notice has been sent, please pay attention to check and recharge."
+                    )
         else :
+            logging.info(
+            f"Check the electricity bill balance, the notification will be sent = {self.RECHARGE_NOTIFY}")
             return
-        if balance < self.BALANCE :
-            for token in self.PUSHPLUS_TOKEN:
-                title = "电费余额不足提醒"
-                content = (f"您用户号{user_id}的当前电费余额为：{balance}元，请及时充值。" )
-                url = ("http://www.pushplus.plus/send?token="+ token+ "&title="+ title+ "&content="+ content)
-                requests.get(url)
-                logging.info(
-                    f"The current balance of user id {user_id} is {balance} CNY less than {self.BALANCE} CNY, notice has been sent, please pay attention to check and recharge."
-                )
+

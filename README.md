@@ -37,7 +37,7 @@
    | sensor.electricity_charge_balance_xxxx | 预付费显示电费余额，反之显示上月应交电费，单位元                      |
    | sensor.yearly_electricity_usage_xxxx   | 今年总用电量，单位KWH、度。                                           |
    | sensor.yearly_electricity_charge_xxxx  | 今年总用电费用，单位元                                                |
-   | sensor.month_electricity_usage_xxxx    | 最近一天用电量，单位KWH、度。属性含present_date（查询电量代表的日期） |
+   | sensor.month_electricity_usage_xxxx    | 最近一个月用电量，单位KWH、度。属性含present_date（查询电量代表的日期） |
    | sensor.month_electricity_charge_xxxx   | 上月总用电费用，单位元     属性含present_date（查询电量代表的日期）   |
 2. 可选，近三十天每日用电量数据（SQLite数据库）
    数据库表名为 daily+userid ，在项目路径下有个homeassistant.db  的数据库文件就是；
@@ -78,7 +78,7 @@
 
 ## 2）获取HA token
 
-  token获取方法参考[https://cloud.tencent.com/developer/article/2139538](https://cloud.tencent.com/developer/article/2139538)
+  token获取方法参考[https://blog.csdn.net/qq_25886111/article/details/106282492](https://blog.csdn.net/qq_25886111/article/details/106282492)
 
 ## 3）docker镜像部署，速度快
 
@@ -285,8 +285,6 @@ template:
 
 <img src="assets/restart.jpg" alt="restart.jpg" style="zoom: 50%;" />
 
-
-
 6. 更新容器及其代码（需要更新才需要）
 
 ```bash
@@ -297,7 +295,6 @@ docker-compose up -d # 重新运行
 ```
 
 ## 4）ha内数据展示
-
 
 <img src="assets/edit1.jpg" alt="edit1.jpg" style="zoom: 50%;" />
 
@@ -371,10 +368,10 @@ cards:
 type: vertical-stack
 ```
 
-
 ## 5）电量通知
 
   更新电费余额不足提醒，在.env里设置提醒余额。目前我是用[pushplus](https://www.pushplus.plus/)的方案，注册pushplus然后，获取token，通知给谁就让谁注册并将token填到.env中
+  token获取方法参考[https://cloud.tencent.com/developer/article/2139538](https://cloud.tencent.com/developer/article/2139538)
 
 # 其他
 
