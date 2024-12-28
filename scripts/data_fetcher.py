@@ -161,6 +161,8 @@ class DataFetcher:
         try:
             # 创建数据库
             DB_NAME = os.getenv("DB_NAME", "homeassistant.db")
+            if 'PYTHON_IN_DOCKER' in os.environ: 
+                DB_NAME = "/data/" + DB_NAME
             self.connect = sqlite3.connect(DB_NAME)
             self.connect.cursor()
             logging.info(f"Database of {DB_NAME} created successfully.")
@@ -216,7 +218,7 @@ class DataFetcher:
             self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[1]/div[1]/div[3]/span')
             input_elements = driver.find_elements(By.CLASS_NAME, "el-input__inner")
             input_elements[2].send_keys(self._username)
-            logging.info(f"input_elements username : {self._username}.\r")
+            logging.info(f"input_elements username : {self._username}\r")
             self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[2]/div[2]/form/div[1]/div[2]/div[2]/div/a')
             code = input("Input your phone verification code: ")
             input_elements[3].send_keys(code)
@@ -231,9 +233,9 @@ class DataFetcher:
             # input username and password
             input_elements = driver.find_elements(By.CLASS_NAME, "el-input__inner")
             input_elements[0].send_keys(self._username)
-            logging.info(f"input_elements username : {self._username}.\r")
+            logging.info(f"input_elements username : {self._username}\r")
             input_elements[1].send_keys(self._password)
-            logging.info(f"input_elements password : {self._password}.\r")
+            logging.info(f"input_elements password : {self._password}\r")
 
             # click login button
             self._click_button(driver, By.CLASS_NAME, "el-button.el-button--primary")
