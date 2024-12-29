@@ -1,9 +1,9 @@
 requests==2.31.0
-selenium==4.5.0
-schedule==1.1.0
-Pillow==9.2.0
-undetected_chromedriver==3.4.7
-onnxruntime==1.17.3
-numpy==1.24.3
+selenium==4.19.0
+schedule==1.2.1
+Pillow==10.1.0
+undetected_chromedriver==3.5.4
+onnxruntime==1.18.1
+numpy==1.26.2
 python-dotenv
 python-dateutil

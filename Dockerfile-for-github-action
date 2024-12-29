@@ -1,4 +1,4 @@
-FROM python:3.9.19-slim-bullseye as build
+FROM python:3.11.11-slim-bookworm as build
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -6,6 +6,7 @@ ENV PYTHONUNBUFFERED=1
 ARG TARGETARCH
 ARG VERSION
 ENV VERSION=${VERSION}
+ENV PYTHON_IN_DOCKER='PYTHON_IN_DOCKER'
 
 COPY scripts/* /app/
 WORKDIR /app
@@ -16,25 +17,6 @@ RUN apt-get --allow-releaseinfo-change update \
     && dpkg-reconfigure --frontend noninteractive tzdata \
     && rm -rf /var/lib/apt/lists/*  \
     && apt-get clean
-
-# RUN cd /tmp \
-#     && python3 -m pip install --upgrade pip \
-    # && echo '#!/bin/bash\n \
-    # if [ "$TARGETARCH" = "arm" ]; then\n \
-    #     cd /tmp\n \
-    #     curl -O -L https://github.com/maxisoft/pytorch-arm/releases/download/v1.0.0/numpy-1.23.5-cp39-cp39-linux_armv7l.whl\n \
-    #     curl -v -o onnxruntime-1.16.0-cp39-cp39-linux_armv7l.whl https://github.com/nknytk/built-onnxruntime-for-raspberrypi-linux/blob/master/wheels/bullseye/onnxruntime-1.16.0-cp39-cp39-linux_armv7l.whl\n \
-    #     PIP_ROOT_USER_ACTION=ignore pip3 install numpy-1.23.5-cp39-cp39-linux_armv7l.whl\n \
-    #     PIP_ROOT_USER_ACTION=ignore pip3 install onnxruntime-1.16.0-cp39-cp39-linux_armv7l.whl\n \
-    # else\n \
-    #     cd /tmp\n \
-    #     PIP_ROOT_USER_ACTION=ignore pip3 install numpy==1.23.5 onnxruntime==1.17.3 \n \
-    # fi \n' > ./targetArch.sh \
-    # && bash ./targetArch.sh \
-    # && rm -rf /tmp/* \
-    # && pip cache purge \
-    # && rm -rf /var/lib/apt/lists/* \
-    # && rm -rf /var/log/*
 
 COPY ./requirements.txt /tmp/requirements.txt
 
