@@ -84,6 +84,7 @@ def get_transparency_location(image):
     return upper_left[0], upper_left[1], bottom_right[0], bottom_right[1]
 
 class DataFetcher:
+    connect = None
 
     def __init__(self, username: str, password: str):
         dotenv.load_dotenv()
@@ -104,7 +105,7 @@ class DataFetcher:
         self.RETRY_TIMES_LIMIT = int(os.getenv("RETRY_TIMES_LIMIT", 5))
         self.LOGIN_EXPECTED_TIME = int(os.getenv("LOGIN_EXPECTED_TIME", 10))
         self.RETRY_WAIT_TIME_OFFSET_UNIT = int(os.getenv("RETRY_WAIT_TIME_OFFSET_UNIT", 10))
-        self.IGNORE_USER_ID = os.getenv("IGNORE_USER_ID", "xxxxx,xxxxx").split(",")
+        self.IGNORE_USER_ID = os.getenv("IGNORE_USER_ID", "").split(",")
 
     # @staticmethod
     def _click_button(self, driver, button_search_type, button_search_key):
