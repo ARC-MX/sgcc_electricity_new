@@ -191,10 +191,6 @@ class DataFetcher:
             self.connect.commit()
         except BaseException as e:
             logging.debug(f"Data update failed: {e}")
-
-
-
-
                 
     def connect_user_data_db(self, user_id):
         """创建数据库集合，db_name = electricity_data_usage_{user_id}
@@ -202,6 +198,8 @@ class DataFetcher:
         try:
             # 创建数据库
             DB_NAME = os.getenv("DB_NAME", "homeassistant.db")
+            if 'PYTHON_IN_DOCKER' in os.environ: 
+                DB_NAME = "/data/" + DB_NAME
             self.connect = sqlite3.connect(DB_NAME)
             self.connect.cursor()
             logging.info(f"Database_data{user_id} of {DB_NAME} created successfully. ")
