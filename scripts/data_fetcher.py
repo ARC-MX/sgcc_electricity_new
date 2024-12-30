@@ -161,6 +161,8 @@ class DataFetcher:
         try:
             # 创建数据库
             DB_NAME = os.getenv("DB_NAME", "homeassistant.db")
+            if 'PYTHON_IN_DOCKER' in os.environ: 
+                DB_NAME = "/data/" + DB_NAME
             self.connect = sqlite3.connect(DB_NAME)
             self.connect.cursor()
             logging.info(f"Database of {DB_NAME} created successfully.")
@@ -174,17 +176,20 @@ class DataFetcher:
         # 如果表已存在，则不会创建
         except sqlite3.Error as e:
             logging.debug(f"Create db or Table error:{e}")
-        finally:
-            return self.connect
+            return False
+        return True
 
     def insert_data(self, data:dict):
-            # 创建索引
-            try:
-                sql = f"INSERT OR REPLACE INTO {self.table_name} VALUES(strftime('%Y-%m-%d','{data['date']}'),{data['usage']});"
-                self.connect.execute(sql)
-                self.connect.commit()
-            except BaseException as e:
-                logging.debug(f"Data update failed: {e}")
+        if self.connect is None:
+            logging.error("Database connection is not established.")
+            return
+        # 创建索引
+        try:
+            sql = f"INSERT OR REPLACE INTO {self.table_name} VALUES(strftime('%Y-%m-%d','{data['date']}'),{data['usage']});"
+            self.connect.execute(sql)
+            self.connect.commit()
+        except BaseException as e:
+            logging.debug(f"Data update failed: {e}")
 
     def _get_webdriver(self):
         chrome_options = Options()
@@ -216,7 +221,7 @@ class DataFetcher:
             self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[1]/div[1]/div[3]/span')
             input_elements = driver.find_elements(By.CLASS_NAME, "el-input__inner")
             input_elements[2].send_keys(self._username)
-            logging.info(f"input_elements username : {self._username}.\r")
+            logging.info(f"input_elements username : {self._username}\r")
             self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[2]/div[2]/form/div[1]/div[2]/div[2]/div/a')
             code = input("Input your phone verification code: ")
             input_elements[3].send_keys(code)
@@ -231,9 +236,9 @@ class DataFetcher:
             # input username and password
             input_elements = driver.find_elements(By.CLASS_NAME, "el-input__inner")
             input_elements[0].send_keys(self._username)
-            logging.info(f"input_elements username : {self._username}.\r")
+            logging.info(f"input_elements username : {self._username}\r")
             input_elements[1].send_keys(self._password)
-            logging.info(f"input_elements password : {self._password}.\r")
+            logging.info(f"input_elements password : {self._password}\r")
 
             # click login button
             self._click_button(driver, By.CLASS_NAME, "el-button.el-button--primary")
@@ -540,23 +545,25 @@ class DataFetcher:
                                             "//*[@id='pane-second']/div[2]/div[2]/div[1]/div[3]/table/tbody/tr")  # 用电量值列表
 
         # 连接数据库集合
-        self.connect_user_db(user_id)
-
-        # 将用电量保存为字典
-        for i in days_element:
-            day = i.find_element(By.XPATH, "td[1]/div").text
-            usage = i.find_element(By.XPATH, "td[2]/div").text
-            if usage != "":
-                dic = {'date': day, 'usage': float(usage)}
-                # 插入到数据库
-                try:
-                    self.insert_data(dic)
-                    logging.info(f"The electricity consumption of {usage}KWh on {day} has been successfully deposited into the database")
-                except Exception as e:
-                    logging.debug(f"The electricity consumption of {day} failed to save to the database, which may already exist: {str(e)}")
-            else:
-                logging.info(f"The electricity consumption of {usage} get nothing")
-        self.connect.close()
+        if self.connect_user_db(user_id):
+            # 将用电量保存为字典
+            for i in days_element:
+                day = i.find_element(By.XPATH, "td[1]/div").text
+                usage = i.find_element(By.XPATH, "td[2]/div").text
+                if usage != "":
+                    dic = {'date': day, 'usage': float(usage)}
+                    # 插入到数据库
+                    try:
+                        self.insert_data(dic)
+                        logging.info(f"The electricity consumption of {usage}KWh on {day} has been successfully deposited into the database")
+                    except Exception as e:
+                        logging.debug(f"The electricity consumption of {day} failed to save to the database, which may already exist: {str(e)}")
+                else:
+                    logging.info(f"The electricity consumption of {usage} get nothing")
+            self.connect.close()
+        else:
+            logging.info("The database creation failed and the data was not written correctly.")
+            return
 
 if __name__ == "__main__":
     with open("bg.jpg", "rb") as f:
