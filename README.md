@@ -117,6 +117,8 @@ DB_NAME="homeassistant.db"
 # COLLECTION_NAME默认为electricity_daily_usage_{国网用户id}，不支持修改。
 
 ## homeassistant配置
+# 开启homeassistant配置传感器模式,关闭之后自行映射db处理
+HASS_ENABLED=True
 # 改为你的localhost为你的homeassistant地址
 HASS_URL="http://localhost:8123/" 
 # homeassistant的长期令牌
@@ -395,6 +397,7 @@ type: vertical-stack
 2024-07-03：新增每天定时执行两次，添加配置默认增加近 7 天每日电量写入数据, 可修改为 30 天。
 2024-07-05：新增余额不足提醒功能。
 2024-12-10：新增忽略指定用户ID的功能：针对一些用户拥有充电或者发电账户，可以使用 IGNORE_USER_ID 环境变量忽略特定的ID。
+2024-12-30：输出所有信息至数据库，增加hass传感器的开关，关闭后可以自行映射数据库至本地。
 TO-DO
 
 - [X] 增加离线滑动验证码识别方案

@@ -99,7 +99,8 @@ class DataFetcher:
         self.enable_database_storage = os.getenv("ENABLE_DATABASE_STORAGE", "false").lower() == "true"
 
 
-
+        self.HASS_ENABLED = os.getenv("HASS_ENABLED").lower()
+        
         self.DRIVER_IMPLICITY_WAIT_TIME = int(os.getenv("DRIVER_IMPLICITY_WAIT_TIME", 60))
         self.RETRY_TIMES_LIMIT = int(os.getenv("RETRY_TIMES_LIMIT", 5))
         self.LOGIN_EXPECTED_TIME = int(os.getenv("LOGIN_EXPECTED_TIME", 10))
@@ -165,7 +166,7 @@ class DataFetcher:
                 DB_NAME = "/data/" + DB_NAME
             self.connect = sqlite3.connect(DB_NAME)
             self.connect.cursor()
-            logging.info(f"Database of {DB_NAME} created successfully.")
+            logging.info(f"Database_daily of {DB_NAME} created successfully.")
             # 创建表名
             self.table_name = f"daily{user_id}"
             sql = f'''CREATE TABLE IF NOT EXISTS {self.table_name} (
@@ -191,6 +192,48 @@ class DataFetcher:
         except BaseException as e:
             logging.debug(f"Data update failed: {e}")
 
+
+
+
+                
+    def connect_user_data_db(self, user_id):
+        """创建数据库集合，db_name = electricity_data_usage_{user_id}
+        :param user_id: 用户ID"""
+        try:
+            # 创建数据库
+            DB_NAME = os.getenv("DB_NAME", "homeassistant.db")
+            self.connect = sqlite3.connect(DB_NAME)
+            self.connect.cursor()
+            logging.info(f"Database_data{user_id} of {DB_NAME} created successfully. ")
+            try:
+                # 创建表名
+                self.datab_name = f"data{user_id}"
+                sql = f'''CREATE TABLE IF NOT EXISTS {self.datab_name} (
+						name TEXT PRIMARY KEY NOT NULL,
+						value TEXT NOT NULL);'''
+                self.connect.execute(sql)
+                logging.info(f"Table {self.datab_name} created successfully")
+            except BaseException as e:
+                logging.debug(f"Table {self.datab_name} already exists: {e}")
+        # 如果表已存在，则不会创建
+        except BaseException as e:
+            logging.debug(f"Table: {self.db_datab_name} already exists:{e}")
+        finally:
+            return self.connect
+
+    def insert_other_data(self, data:dict):
+        if self.connect is None:
+            logging.error("Database connection is not established.")
+            return
+        # 创建索引
+		try:
+			sql = f"INSERT OR REPLACE INTO {self.datab_name} VALUES('{data['name']}','{data['value']}');"
+			self.connect.execute(sql)
+			self.connect.commit()
+		except BaseException as e:
+			logging.debug(f"Data update failed: {e}")
+
+                
     def _get_webdriver(self):
         chrome_options = Options()
         chrome_options.add_argument('--incognito')
@@ -290,7 +333,9 @@ class DataFetcher:
         driver.maximize_window() 
         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
         logging.info("Webdriver initialized.")
-        updator = SensorUpdator()
+        #判断是否需要hass传感器
+        if self.HASS_ENABLED == "true" :
+            updator = SensorUpdator()
         
         try:
             if os.getenv("DEBUG_MODE", "false").lower() == "true":
@@ -330,7 +375,9 @@ class DataFetcher:
                 else:
                     ### get data 
                     balance, last_daily_date, last_daily_usage, yearly_charge, yearly_usage, month_charge, month_usage  = self._get_all_data(driver, user_id, userid_index)
-                    updator.update_one_userid(user_id, balance, last_daily_date, last_daily_usage, yearly_charge, yearly_usage, month_charge, month_usage)
+                    # 如果hass传感器开启，
+                    if self.HASS_ENABLED == "true" :
+                        updator.update_one_userid(user_id, balance, last_daily_date, last_daily_usage, yearly_charge, yearly_usage, month_charge, month_usage)
         
                     time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
             except Exception as e:
@@ -385,9 +432,18 @@ class DataFetcher:
         if month is None:
             logging.error(f"Get month power usage for {user_id} failed, pass")
         else:
+            self.connect_user_data_db(user_id)
             for m in range(len(month)):
                 logging.info(
                     f"Get month power charge for {user_id} successfully, {month[m]} usage is {month_usage[m]} KWh, charge is {month_charge[m]} CNY.")
+                # 连接数据库集合'
+                
+                dic = {'name': f"{month[m]}usage", 'value': f"{month_usage[m]}"}
+                self.insert_other_data(dic)
+                dic = {'name': f"{month[m]}charge", 'value': f"{month_charge[m]}"}
+                self.insert_other_data(dic)
+            self.connect.close()
+            
         # get yesterday usage
         last_daily_date, last_daily_usage = self._get_yesterday_usage(driver)
 
@@ -412,7 +468,34 @@ class DataFetcher:
             month_usage = month_usage[-1]
         else:
             month_usage = None
-
+        # 连接数据库集合
+        self.connect_user_data_db(user_id)
+        # 写入当前户号
+        dic = {'name': 'user', 'value': f"{user_id}"}
+        self.insert_other_data(dic)
+        # 写入剩余金额
+        dic = {'name': 'balance', 'value': f"{balance}"}
+        self.insert_other_data(dic)
+        # 写入年用电量
+        dic = {'name': 'yearly_usage', 'value': f"{yearly_usage}"}
+        self.insert_other_data(dic)
+        # 写入年用电电费
+        dic = {'name': 'yearly_charge', 'value': f"{yearly_charge} "}
+        self.insert_other_data(dic)
+        # 写入最近一次更新时间
+        dic = {'name': f"daily_date", 'value': f"{last_daily_date}"}
+        self.insert_other_data(dic)
+        # 写入最近一次更新时间用电量
+        dic = {'name': f"daily_usage", 'value': f"{last_daily_usage}"}
+        self.insert_other_data(dic)
+        # 写入本月电量
+        dic = {'name': f"month_usage", 'value': f"{month_usage}"}
+        self.insert_other_data(dic)
+        # 写入本月电费
+        dic = {'name': f"month_charge", 'value': f"{month_charge}"}
+        self.insert_other_data(dic)
+        self.connect.close()
+        
         return balance, last_daily_date, last_daily_usage, yearly_charge, yearly_usage, month_charge, month_usage
 
     def _get_user_ids(self, driver):
