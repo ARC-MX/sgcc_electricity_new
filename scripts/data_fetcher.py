@@ -198,7 +198,11 @@ class DataFetcher:
         try:
             # 创建数据库
             DB_NAME = os.getenv("DB_NAME", "homeassistant.db")
+<<<<<<< HEAD
             if 'PYTHON_IN_DOCKER' in os.environ: 
+=======
+	    if 'PYTHON_IN_DOCKER' in os.environ: 
+>>>>>>> 73514627f1241b8304078e908a3921abcc642f05
                 DB_NAME = "/data/" + DB_NAME
             self.connect = sqlite3.connect(DB_NAME)
             self.connect.cursor()
