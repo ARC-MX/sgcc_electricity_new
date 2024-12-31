@@ -170,6 +170,15 @@ class DataFetcher:
                     usage REAL NOT NULL)'''
             self.connect.execute(sql)
             logging.info(f"Table {self.table_name} created successfully")
+			
+			# 创建data表名
+            self.table_expand_name = f"data{user_id}"
+            sql = f'''CREATE TABLE IF NOT EXISTS {self.table_expand_name} (
+                    name TEXT PRIMARY KEY NOT NULL,
+                    value TEXT NOT NULL)'''
+            self.connect.execute(sql)
+            logging.info(f"Table {self.table_expand_name} created successfully")
+			
         # 如果表已存在，则不会创建
         except sqlite3.Error as e:
             logging.debug(f"Create db or Table error:{e}")
@@ -188,6 +197,19 @@ class DataFetcher:
         except BaseException as e:
             logging.debug(f"Data update failed: {e}")
 
+    def insert_expand_data(self, data:dict):
+        if self.connect is None:
+            logging.error("Database connection is not established.")
+            return
+        # 创建索引
+        try:
+            sql = f"INSERT OR REPLACE INTO {self.table_expand_name} VALUES('{data['name']}','{data['value']}');"
+            self.connect.execute(sql)
+            self.connect.commit()
+        except BaseException as e:
+            logging.debug(f"Data update failed: {e}")
+
+                
     def _get_webdriver(self):
         chrome_options = Options()
         chrome_options.add_argument('--incognito')
@@ -376,15 +398,7 @@ class DataFetcher:
         else:
             logging.info(
                 f"Get year power charge for {user_id} successfully, yealrly charge is {yearly_charge} CNY")
-
-        # get month usage
-        month, month_usage, month_charge = self._get_month_usage(driver)
-        if month is None:
-            logging.error(f"Get month power usage for {user_id} failed, pass")
-        else:
-            for m in range(len(month)):
-                logging.info(
-                    f"Get month power charge for {user_id} successfully, {month[m]} usage is {month_usage[m]} KWh, charge is {month_charge[m]} CNY.")
+  
         # get yesterday usage
         last_daily_date, last_daily_usage = self._get_yesterday_usage(driver)
 
@@ -392,7 +406,12 @@ class DataFetcher:
         if self.enable_database_storage:
             # 将数据存储到数据库
             logging.info("enable_database_storage is true, we will store the data to the database.")
-            self.save_daily_usage_data(driver, user_id)
+            # 按天获取数据 7天/30天
+            date, usages = self._get_daily_usage_data(driver)
+            # 按月获取数据
+            month, month_usage, month_charge = self._get_month_usage(driver)
+            if month is None:
+                logging.error(f"Get month power usage for {user_id} failed, pass")
         else:
             logging.info("enable_database_storage is false, we will not store the data to the database.")
 
@@ -401,6 +420,9 @@ class DataFetcher:
         else:
             logging.info(
                 f"Get daily power consumption for {user_id} successfully, , {last_daily_date} usage is {last_daily_usage} kwh.")
+                
+        self._save_user_data(user_id, balance, last_daily_date, last_daily_usage, date, usages, month, month_usage, month_charge, yearly_charge, yearly_usage)
+        
         if month_charge:
             month_charge = month_charge[-1]
         else:
@@ -553,10 +575,30 @@ class DataFetcher:
                 logging.info(f"The electricity consumption of {usage} get nothing")
         return date, usages
 
-    def _save_user_data(self, user_id, date, usages, month, month_usage, month_charge, yearly_charge, yearly_usage):
+    def _save_user_data(self, user_id, balance, last_daily_date, last_daily_usage, date, usages, month, month_usage, month_charge, yearly_charge, yearly_usage):
         # 连接数据库集合
         if self.connect_user_db(user_id):
-            for index in len(date):
+            # 写入当前户号
+            dic = {'name': 'user', 'value': f"{user_id}"}
+            self.insert_expand_data(dic)
+            # 写入剩余金额
+            dic = {'name': 'balance', 'value': f"{balance}"}
+            self.insert_expand_data(dic)
+            # 写入最近一次更新时间
+            dic = {'name': f"daily_date", 'value': f"{last_daily_date}"}
+            self.insert_expand_data(dic)
+            # 写入最近一次更新时间用电量
+            dic = {'name': f"daily_usage", 'value': f"{last_daily_usage}"}
+            self.insert_expand_data(dic)
+            
+            # 写入年用电量
+            dic = {'name': 'yearly_usage', 'value': f"{yearly_usage}"}
+            self.insert_expand_data(dic)
+            # 写入年用电电费
+            dic = {'name': 'yearly_charge', 'value': f"{yearly_charge} "}
+            self.insert_expand_data(dic)
+            
+            for index in range(len(date)):
                 dic = {'date': date[index], 'usage': float(usages[index])}
                 # 插入到数据库
                 try:
@@ -564,11 +606,32 @@ class DataFetcher:
                     logging.info(f"The electricity consumption of {usages[index]}KWh on {date[index]} has been successfully deposited into the database")
                 except Exception as e:
                     logging.debug(f"The electricity consumption of {date[index]} failed to save to the database, which may already exist: {str(e)}")
-            for index in len(month):
-                # dic = {'date': month[index], 'usage': float(month_usage[index]), 'charge': float(month_charge[index])}
-                pass
-                #插入数据
-            #插入年
+
+            for index in range(len(month)):
+                logging.info(
+                try:
+                    dic = {'name': f"{month[index]}usage", 'value': f"{month_usage[index]}"}
+                    self.insert_expand_data(dic)
+                    dic = {'name': f"{month[index]}charge", 'value': f"{month_charge[index]}"}
+                    self.insert_expand_data(dic)
+                    logging.info(f"Get month power charge for {user_id} successfully, {month[index]} usage is {month_usage[index]} KWh, charge is {month_charge[index]} CNY.")
+                except Exception as e:
+                    logging.debug(f"The electricity consumption of {month[index]} failed to save to the database, which may already exist: {str(e)}")
+            if month_charge:
+                month_charge = month_charge[-1]
+            else:
+                month_charge = None
+                
+            if month_usage:
+                month_usage = month_usage[-1]
+            else:
+                month_usage = None
+            # 写入本月电量
+            dic = {'name': f"month_usage", 'value': f"{month_usage}"}
+            self.insert_expand_data(dic)
+            # 写入本月电费
+            dic = {'name': f"month_charge", 'value': f"{month_charge}"}
+            self.insert_expand_data(dic)
             # dic = {'date': month[index], 'usage': float(month_usage[index]), 'charge': float(month_charge[index])}
             self.connect.close()
         else:
