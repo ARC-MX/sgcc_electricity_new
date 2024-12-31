@@ -1,8 +1,6 @@
 #!/bin/bash
-
 # Read configuration from options.json
 CONFIG_PATH="/data/options.json"
-
 if [ ! -f "$CONFIG_PATH" ]; then
     echo "Error: Configuration file not found $CONFIG_PATH"
     exit 1
@@ -25,29 +23,23 @@ export DATA_RETENTION_DAYS=$(jq -r '.data_retention_days // "30"' "$CONFIG_PATH"
 export RECHARGE_NOTIFY=$(jq -r '.recharge_notify // "false"' "$CONFIG_PATH")
 export BALANCE=$(jq -r '.balance // "50"' "$CONFIG_PATH")
 export PUSHPLUS_TOKEN=$(jq -r '.pushplus_token // empty' "$CONFIG_PATH")
-
-
 # Check required environment variables
 if [ -z "$PHONE_NUMBER" ]; then
     echo "Error: Phone number not set"
     exit 1
 fi
-
 if [ -z "$PASSWORD" ]; then
     echo "Error: Password not set"
     exit 1
 fi
-
 if [ -z "$HASS_URL" ]; then
     echo "Error: Home Assistant URL not set"
     exit 1
 fi
-
 if [ -z "$HASS_TOKEN" ]; then
     echo "Error: Home Assistant Token not set"
     exit 1
 fi
-
 # Output environment variables log
 echo "Environment variables setup completed:"
 echo "Phone Number: ${PHONE_NUMBER:-Not Set}"
@@ -55,7 +47,5 @@ echo "Home Assistant URL: ${HASS_URL:-Not Set}"
 echo "Job Start Time: ${JOB_START_TIME:-Not Set}"
 echo "Log Level: ${LOG_LEVEL:-Not Set}"
 echo "Data Retention Days: ${DATA_RETENTION_DAYS:-Not Set}"
-
 # Start main program
 python3 /app/main.py
-
