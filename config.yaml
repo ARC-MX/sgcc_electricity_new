@@ -6,9 +6,6 @@ url: "https://github.com/ARC-MX/sgcc_electricity_new"
 arch:
   - aarch64
   - amd64
-  - armhf
-  - armv7
-  - i386
 host_network: true
 startup: application
 boot: auto

@@ -97,9 +97,6 @@ class DataFetcher:
 
         # 获取 ENABLE_DATABASE_STORAGE 的值，默认为 False
         self.enable_database_storage = os.getenv("ENABLE_DATABASE_STORAGE", "false").lower() == "true"
-
-
-
         self.DRIVER_IMPLICITY_WAIT_TIME = int(os.getenv("DRIVER_IMPLICITY_WAIT_TIME", 60))
         self.RETRY_TIMES_LIMIT = int(os.getenv("RETRY_TIMES_LIMIT", 5))
         self.LOGIN_EXPECTED_TIME = int(os.getenv("LOGIN_EXPECTED_TIME", 10))
@@ -519,8 +516,8 @@ class DataFetcher:
         except:
             return None,None,None
 
-    # 增加储存用电量的到mongodb的函数
-    def save_daily_usage_data(self, driver, user_id):
+    # 增加获取每日用电量的函数
+    def _get_daily_usage_data(self, driver):
         """储存指定天数的用电量"""
         retention_days = int(os.getenv("DATA_RETENTION_DAYS", 7))  # 默认值为7天
 
@@ -543,23 +540,36 @@ class DataFetcher:
         # 获取用电量的数据
         days_element = driver.find_elements(By.XPATH,
                                             "//*[@id='pane-second']/div[2]/div[2]/div[1]/div[3]/table/tbody/tr")  # 用电量值列表
+        date = []
+        usages = []
+        # 将用电量保存为字典
+        for i in days_element:
+            day = i.find_element(By.XPATH, "td[1]/div").text
+            usage = i.find_element(By.XPATH, "td[2]/div").text
+            if usage != "":
+                usages.append(usage)
+                date.append(day)
+            else:
+                logging.info(f"The electricity consumption of {usage} get nothing")
+        return date, usages
 
+    def _save_user_data(self, user_id, date, usages, month, month_usage, month_charge, yearly_charge, yearly_usage):
         # 连接数据库集合
         if self.connect_user_db(user_id):
-            # 将用电量保存为字典
-            for i in days_element:
-                day = i.find_element(By.XPATH, "td[1]/div").text
-                usage = i.find_element(By.XPATH, "td[2]/div").text
-                if usage != "":
-                    dic = {'date': day, 'usage': float(usage)}
-                    # 插入到数据库
-                    try:
-                        self.insert_data(dic)
-                        logging.info(f"The electricity consumption of {usage}KWh on {day} has been successfully deposited into the database")
-                    except Exception as e:
-                        logging.debug(f"The electricity consumption of {day} failed to save to the database, which may already exist: {str(e)}")
-                else:
-                    logging.info(f"The electricity consumption of {usage} get nothing")
+            for index in len(date):
+                dic = {'date': date[index], 'usage': float(usages[index])}
+                # 插入到数据库
+                try:
+                    self.insert_data(dic)
+                    logging.info(f"The electricity consumption of {usages[index]}KWh on {date[index]} has been successfully deposited into the database")
+                except Exception as e:
+                    logging.debug(f"The electricity consumption of {date[index]} failed to save to the database, which may already exist: {str(e)}")
+            for index in len(month):
+                # dic = {'date': month[index], 'usage': float(month_usage[index]), 'charge': float(month_charge[index])}
+                pass
+                #插入数据
+            #插入年
+            # dic = {'date': month[index], 'usage': float(month_usage[index]), 'charge': float(month_charge[index])}
             self.connect.close()
         else:
             logging.info("The database creation failed and the data was not written correctly.")
