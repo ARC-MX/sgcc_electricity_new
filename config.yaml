@@ -19,7 +19,7 @@ map:
 options:
   phone: ""
   password: ""
-  enable_database_storage: true
+  enable_database_storage: false
   db_name: "homeassistant.db"
   hass_url: "http://homeassistant.local:8123/"
   hass_token: ""
