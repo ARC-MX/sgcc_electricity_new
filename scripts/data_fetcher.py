@@ -608,7 +608,6 @@ class DataFetcher:
                     logging.debug(f"The electricity consumption of {date[index]} failed to save to the database, which may already exist: {str(e)}")
 
             for index in range(len(month)):
-                logging.info(
                 try:
                     dic = {'name': f"{month[index]}usage", 'value': f"{month_usage[index]}"}
                     self.insert_expand_data(dic)
