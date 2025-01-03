@@ -7,8 +7,7 @@ services:
     #   context: .
     #   dockerfile: Dockerfile
     container_name: sgcc_electricity
-    networks:
-      sgcc_network:
+    network_mode: "host"
     environment:
       - SET_CONTAINER_TIMEZONE=true
       - CONTAINER_TIMEZONE=Asia/Shanghai
@@ -17,5 +16,3 @@ services:
     #   - ./:/data        # if you want to read homeassistant.db, homeassistant.db is in the container at /data/
     command: python3 main.py 
 
-networks:
-  sgcc_network:

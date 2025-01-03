@@ -5,7 +5,7 @@ on:
     inputs:
       username:
         description: 'version of this branch'
-        default: 'v1.6.1'
+        default: 'v1.6.2'
         required: true
         type: string
     paths:
