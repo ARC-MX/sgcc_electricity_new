@@ -12,7 +12,7 @@ import requests
 import dotenv
 import sqlite3
 import undetected_chromedriver as uc
-
+from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver import ActionChains
 from selenium.webdriver.chrome.options import Options
@@ -398,7 +398,7 @@ class DataFetcher:
         else:
             logging.info(
                 f"Get year power charge for {user_id} successfully, yealrly charge is {yearly_charge} CNY")
-  
+
         # get yesterday usage
         last_daily_date, last_daily_usage = self._get_yesterday_usage(driver)
 
@@ -472,24 +472,32 @@ class DataFetcher:
     def _get_yearly_data(self, driver):
 
         try:
+            if datetime.now().month == 1:
+                self._click_button(driver, By.XPATH, '//*[@id="pane-first"]/div[1]/div/div[1]/div/div/input')
+                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+                span_element = driver.find_element(By.XPATH, f"//span[contains(text(), '{datetime.now().year - 1}')]")
+                span_element.click()
+                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
             self._click_button(driver, By.XPATH, "//div[@class='el-tabs__nav is-top']/div[@id='tab-first']")
             time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
             # wait for data displayed
             target = driver.find_element(By.CLASS_NAME, "total")
             WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(EC.visibility_of(target))
-        except:
+        except Exception as e:
+            logging.error(f"The yearly data get failed : {e}")
             return None, None
 
         # get data
         try:
             yearly_usage = driver.find_element(By.XPATH, "//ul[@class='total']/li[1]/span").text
-
-        except:
+        except Exception as e:
+            logging.error(f"The yearly_usage data get failed : {e}")
             yearly_usage = None
 
         try:
             yearly_charge = driver.find_element(By.XPATH, "//ul[@class='total']/li[2]/span").text
-        except:
+        except Exception as e:
+            logging.error(f"The yearly_charge data get failed : {e}")
             yearly_charge = None
 
         return yearly_usage, yearly_charge
@@ -510,7 +518,8 @@ class DataFetcher:
                                                 "//div[@class='el-tab-pane dayd']//div[@class='el-table__body-wrapper is-scrolling-none']/table/tbody/tr[1]/td[1]/div")
             last_daily_date = date_element.text # 获取最近一次用电量的日期
             return last_daily_date, float(usage_element.text)
-        except:
+        except Exception as e:
+            logging.error(f"The yesterday data get failed : {e}")
             return None
 
     def _get_month_usage(self, driver):
@@ -519,6 +528,12 @@ class DataFetcher:
         try:
             self._click_button(driver, By.XPATH, "//div[@class='el-tabs__nav is-top']/div[@id='tab-first']")
             time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+            if datetime.now().month == 1:
+                self._click_button(driver, By.XPATH, '//*[@id="pane-first"]/div[1]/div/div[1]/div/div/input')
+                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+                span_element = driver.find_element(By.XPATH, f"//span[contains(text(), '{datetime.now().year - 1}')]")
+                span_element.click()
+                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
             # wait for month displayed
             target = driver.find_element(By.CLASS_NAME, "total")
             WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(EC.visibility_of(target))
@@ -535,7 +550,8 @@ class DataFetcher:
                 usage.append(month_element[i][1])
                 charge.append(month_element[i][2])
             return month, usage, charge
-        except:
+        except Exception as e:
+            logging.error(f"The month data get failed : {e}")
             return None,None,None
 
     # 增加获取每日用电量的函数

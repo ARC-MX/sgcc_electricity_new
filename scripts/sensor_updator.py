@@ -100,7 +100,11 @@ class SensorUpdator:
             if usage
             else YEARLY_CHARGE_SENSOR_NAME + postfix
         )
-        last_reset = datetime.now().strftime("%Y")
+        if datetime.now().month == 1:
+            last_year = datetime.now().year -1 
+            last_reset = datetime.now().replace(year=last_year).strftime("%Y")
+        else:
+            last_reset = datetime.now().strftime("%Y")
         request_body = {
             "state": sensorState,
             "unique_id": sensorName,

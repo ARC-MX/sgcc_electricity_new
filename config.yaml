@@ -48,3 +48,21 @@ schema:
   recharge_notify: bool 
   balance: float 
   pushplus_token: "str?"
+environment:
+  PHONE_NUMBER: "${phone}"
+  PASSWORD: "${password}"
+  IGNORE_USER_ID: "${IGNORE_USER_ID}"
+  ENABLE_DATABASE_STORAGE: "${enable_database_storage}"
+  DB_NAME: "${db_name}"
+  HASS_URL: "${hass_url}"
+  HASS_TOKEN: "${hass_token}"
+  JOB_START_TIME: "${job_start_time}"
+  DRIVER_IMPLICITLY_WAIT_TIME: "${driver_implicitly_wait_time}"
+  RETRY_TIMES_LIMIT: "${retry_times_limit}"
+  LOGIN_EXPECTED_TIME: "${login_expected_time}"
+  RETRY_WAIT_TIME_OFFSET_UNIT: "${retry_wait_time_offset_unit}"
+  LOG_LEVE: "${log_level}"
+  DATA_RETENTION_DAYS: "${data_retention_days}"
+  RECHARGE_NOTIFY: "${IGNORE_USER_ID}"
+  BALANCE: "${balance}"
+  PUSHPLUS_TOKEN: "${pushplus_token}"
