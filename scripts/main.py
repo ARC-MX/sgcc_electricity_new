@@ -1,21 +1,18 @@
 import logging
 import logging.config
-import requests
 import os
 import sys
 import time
-from datetime import datetime,timedelta
-
-import dotenv
 import schedule
-
+from datetime import datetime,timedelta
 from const import *
 from data_fetcher import DataFetcher
 
 
 def main():
-    # 读取 .env 文件
-    dotenv.load_dotenv(verbose=True)
+    if 'PYTHON_IN_DOCKER' not in os.environ: 
+        # 读取 .env 文件
+        dotenv.load_dotenv(verbose=True)
     global RETRY_TIMES_LIMIT
     try:
         PHONE_NUMBER = os.getenv("PHONE_NUMBER")

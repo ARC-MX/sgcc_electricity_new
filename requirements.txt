@@ -5,5 +5,5 @@ Pillow==10.1.0
 undetected_chromedriver==3.5.4
 onnxruntime==1.18.1
 numpy==1.26.2
-python-dotenv
-python-dateutil
+# python-dotenv
+# python-dateutil

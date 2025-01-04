@@ -1,4 +1,3 @@
-from ast import Try
 import logging
 import os
 import re
@@ -7,9 +6,6 @@ import time
 
 import random
 import base64
-import json
-import requests
-import dotenv
 import sqlite3
 import undetected_chromedriver as uc
 from datetime import datetime
@@ -86,7 +82,8 @@ def get_transparency_location(image):
 class DataFetcher:
 
     def __init__(self, username: str, password: str):
-        dotenv.load_dotenv()
+        if 'PYTHON_IN_DOCKER' not in os.environ: 
+            dotenv.load_dotenv(verbose=True)
         self._username = username
         self._password = password
         self.onnx = ONNX("./captcha.onnx")
@@ -141,16 +138,6 @@ class DataFetcher:
         ActionChains(driver).move_by_offset(xoffset=distance, yoffset=yoffset_random).perform()
             # time.sleep(0.2)
         ActionChains(driver).release().perform()
-
-    def base64_api(self, b64, typeid=33):
-        data = {"username": self._tujian_uname, "password": self._tujian_passwd, "typeid": typeid, "image": b64}
-        result = json.loads(requests.post("http://api.ttshitu.com/predict", json=data).text)
-        if result['success']:
-            return result["data"]["result"]
-        else:
-            #！！！！！！！注意：返回 人工不足等 错误情况 请加逻辑处理防止脚本卡死 继续重新 识别
-            return result["message"]
-        return ""
 
     def connect_user_db(self, user_id):
         """创建数据库集合，db_name = electricity_daily_usage_{user_id}
@@ -269,7 +256,7 @@ class DataFetcher:
                 self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[1]/div[1]/div[2]/span')
                 #get canvas image
                 background_JS = 'return document.getElementById("slideVerify").childNodes[0].toDataURL("image/png");'
-                targe_JS = 'return document.getElementsByClassName("slide-verify-block")[0].toDataURL("image/png");'
+                # targe_JS = 'return document.getElementsByClassName("slide-verify-block")[0].toDataURL("image/png");'
                 # get base64 image data
                 im_info = driver.execute_script(background_JS) 
                 background = im_info.split(',')[1]  
@@ -317,11 +304,13 @@ class DataFetcher:
                     logging.info("login successed !")
                 else:
                     logging.info("login unsuccessed !")
+                    raise Exception("login unsuccessed")
             else:
                 if self._login(driver):
                     logging.info("login successed !")
                 else:
                     logging.info("login unsuccessed !")
+                    raise Exception("login unsuccessed")
         except Exception as e:
             logging.error(
                 f"Webdriver quit abnormly, reason: {e}. {self.RETRY_TIMES_LIMIT} retry times left.")
@@ -399,8 +388,14 @@ class DataFetcher:
             logging.info(
                 f"Get year power charge for {user_id} successfully, yealrly charge is {yearly_charge} CNY")
 
+        # 按月获取数据
+        month, month_usage, month_charge = self._get_month_usage(driver)
+
         # get yesterday usage
         last_daily_date, last_daily_usage = self._get_yesterday_usage(driver)
+
+        if month is None:
+            logging.error(f"Get month power usage for {user_id} failed, pass")
 
         # 新增储存用电量
         if self.enable_database_storage:
@@ -408,10 +403,7 @@ class DataFetcher:
             logging.info("enable_database_storage is true, we will store the data to the database.")
             # 按天获取数据 7天/30天
             date, usages = self._get_daily_usage_data(driver)
-            # 按月获取数据
-            month, month_usage, month_charge = self._get_month_usage(driver)
-            if month is None:
-                logging.error(f"Get month power usage for {user_id} failed, pass")
+            self._save_user_data(user_id, balance, last_daily_date, last_daily_usage, date, usages, month, month_usage, month_charge, yearly_charge, yearly_usage)
         else:
             logging.info("enable_database_storage is false, we will not store the data to the database.")
 
@@ -420,8 +412,6 @@ class DataFetcher:
         else:
             logging.info(
                 f"Get daily power consumption for {user_id} successfully, , {last_daily_date} usage is {last_daily_usage} kwh.")
-                
-        self._save_user_data(user_id, balance, last_daily_date, last_daily_usage, date, usages, month, month_usage, month_charge, yearly_charge, yearly_usage)
         
         if month_charge:
             month_charge = month_charge[-1]
