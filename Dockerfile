@@ -1,7 +1,9 @@
-FROM arcw/sgcc_electricity:latest
+ARG BUILD_FROM
+FROM $BUILD_FROM
 
-COPY run.sh /run.sh
-RUN chmod +x /run.sh
+ENV SET_CONTAINER_TIMEZONE true
+ENV CONTAINER_TIMEZONE Asia/Shanghai
 
-ENV LANG C.UTF-8
-ENTRYPOINT ["/bin/bash", "/run.sh"]
+WORKDIR /app
+
+CMD ["python3", "main.py"]
