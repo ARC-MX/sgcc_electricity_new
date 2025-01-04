@@ -1,7 +1,6 @@
-FROM arcw/sgcc_electricity:latest
+ARG BUILD_FROM
+FROM $BUILD_FROM
 
-COPY run.sh /run.sh
-RUN chmod +x /run.sh
+WORKDIR /app
 
-ENV LANG C.UTF-8
-ENTRYPOINT ["/bin/bash", "/run.sh"]
+CMD ["python3", "main.py"]

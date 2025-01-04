@@ -2,6 +2,10 @@ FROM python:3.11.11-slim-bookworm as build
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV SET_CONTAINER_TIMEZONE=true
+ENV CONTAINER_TIMEZONE=Asia/Shanghai
+ENV TZ=Asia/Shanghai 
+
 
 ARG TARGETARCH
 ARG VERSION
@@ -13,7 +17,8 @@ WORKDIR /app
 
 RUN apt-get --allow-releaseinfo-change update \
     && apt-get install -y --no-install-recommends jq chromium chromium-driver tzdata \
-    && ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
+    && echo $TZ > /etc/timezone \
     && dpkg-reconfigure --frontend noninteractive tzdata \
     && rm -rf /var/lib/apt/lists/*  \
     && apt-get clean
@@ -34,4 +39,4 @@ RUN mkdir /data \
 
 ENV LANG=C.UTF-8
 
-CMD ["python"]
+CMD ["python3","main.py"]

@@ -12,6 +12,7 @@ from data_fetcher import DataFetcher
 def main():
     if 'PYTHON_IN_DOCKER' not in os.environ: 
         # 读取 .env 文件
+        import dotenv
         dotenv.load_dotenv(verbose=True)
     global RETRY_TIMES_LIMIT
     try:
@@ -28,6 +29,8 @@ def main():
 
     logger_init(LOG_LEVEL)
     logging.info(f"The current repository version is {VERSION}, and the repository address is https://github.com/ARC-MX/sgcc_electricity_new.git")
+    current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    logging.info(f"The current date is {current_datetime}.")
 
     fetcher = DataFetcher(PHONE_NUMBER, PASSWORD)
     logging.info(f"The current logged-in user name is {PHONE_NUMBER}, the homeassistant address is {HASS_URL}, and the program will be executed every day at {JOB_START_TIME}.")

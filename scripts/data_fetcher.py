@@ -83,6 +83,7 @@ class DataFetcher:
 
     def __init__(self, username: str, password: str):
         if 'PYTHON_IN_DOCKER' not in os.environ: 
+            import dotenv
             dotenv.load_dotenv(verbose=True)
         self._username = username
         self._password = password
@@ -390,10 +391,18 @@ class DataFetcher:
 
         # 按月获取数据
         month, month_usage, month_charge = self._get_month_usage(driver)
-
+        if month is None:
+            logging.error(f"Get month power usage for {user_id} failed, pass")
+        else:
+            for m in range(len(month)):
+                logging.info(f"Get month power charge for {user_id} successfully, {month[m]} usage is {month_usage[m]} KWh, charge is {month_charge[m]} CNY.")
         # get yesterday usage
         last_daily_date, last_daily_usage = self._get_yesterday_usage(driver)
-
+        if last_daily_usage is None:
+            logging.error(f"Get daily power consumption for {user_id} failed, pass")
+        else:
+            logging.info(
+                f"Get daily power consumption for {user_id} successfully, , {last_daily_date} usage is {last_daily_usage} kwh.")
         if month is None:
             logging.error(f"Get month power usage for {user_id} failed, pass")
 
@@ -407,11 +416,6 @@ class DataFetcher:
         else:
             logging.info("enable_database_storage is false, we will not store the data to the database.")
 
-        if last_daily_usage is None:
-            logging.error(f"Get daily power consumption for {user_id} failed, pass")
-        else:
-            logging.info(
-                f"Get daily power consumption for {user_id} successfully, , {last_daily_date} usage is {last_daily_usage} kwh.")
         
         if month_charge:
             month_charge = month_charge[-1]

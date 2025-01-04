@@ -1,7 +1,7 @@
-name: "SGCC Electricity New"
-version: "latest"
-slug: "sgcc_electricity_new"
-description: "获取国网电费数据的插件(新版)"
+name: "SGCC Electricity"
+version: "v0.1.0"
+slug: "sgcc_electricity"
+description: "获取国网电费数据的插件"
 url: "https://github.com/ARC-MX/sgcc_electricity_new"
 arch:
   - aarch64
@@ -10,12 +10,13 @@ host_network: true
 startup: application
 boot: auto
 init: false
-#image: "{arch}-sgcc_electricity_new"
+# image: "registry.cn-hangzhou.aliyuncs.com/arcw/sgcc_electricity-{arch}"
 map:
   - config:rw
 options:
   phone: ""
-  password: ""
+  password: ""  
+  ignore_user_id: "xxxx,xxxx"
   enable_database_storage: false
   db_name: "homeassistant.db"
   hass_url: "http://homeassistant.local:8123/"
@@ -29,11 +30,11 @@ options:
   data_retention_days: 7
   recharge_notify: false
   balance: 5.0
-  pushplus_token: ""
+  pushplus_token: "xxxx,xxxx"
 schema:
   phone: str
   password: password
-  IGNORE_USER_ID: "str?"
+  ignore_user_id: str
   enable_database_storage: bool
   db_name: str
   hass_url: str
@@ -47,11 +48,11 @@ schema:
   data_retention_days: int
   recharge_notify: bool 
   balance: float 
-  pushplus_token: "str?"
+  pushplus_token: str
 environment:
   PHONE_NUMBER: "${phone}"
   PASSWORD: "${password}"
-  IGNORE_USER_ID: "${IGNORE_USER_ID}"
+  IGNORE_USER_ID: "${ignore_user_id}"
   ENABLE_DATABASE_STORAGE: "${enable_database_storage}"
   DB_NAME: "${db_name}"
   HASS_URL: "${hass_url}"
@@ -63,6 +64,6 @@ environment:
   RETRY_WAIT_TIME_OFFSET_UNIT: "${retry_wait_time_offset_unit}"
   LOG_LEVE: "${log_level}"
   DATA_RETENTION_DAYS: "${data_retention_days}"
-  RECHARGE_NOTIFY: "${IGNORE_USER_ID}"
+  RECHARGE_NOTIFY: "${recharge_notify}"
   BALANCE: "${balance}"
   PUSHPLUS_TOKEN: "${pushplus_token}"
