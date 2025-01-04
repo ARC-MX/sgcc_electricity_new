@@ -1,7 +1,6 @@
 build_from:
-  aarch64: registry.cn-hangzhou.aliyuncs.com/arcw/sgcc_electricity:latest
-  amd64: registry.cn-hangzhou.aliyuncs.com/arcw/sgcc_electricity:latest
-labels:
-  org.opencontainers.image.title: "SGCC Electricity Add-on"
-  org.opencontainers.image.description: "State Grid Electric Data"
-  org.opencontainers.image.source: "https://github.com/ARC-MX/sgcc_electricity_new"
+  aarch64: registry.cn-hangzhou.aliyuncs.com/arcw/aarch64-sgcc_electricity:latest
+  amd64: registry.cn-hangzhou.aliyuncs.com/arcw/amd64-sgcc_electricity:latest
+codenotary:
+  base_image: ARC-MX@github.com
+  signer: ARC-MX@github.com

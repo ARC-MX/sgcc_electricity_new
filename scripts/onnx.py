@@ -2,9 +2,6 @@
 from PIL import ImageDraw,Image,ImageOps
 import numpy as np
 import onnxruntime
-import time
-import random
-import sys
 
 anchors = [[(116,90),(156,198),(373,326)],[(30,61),(62,45),(59,119)],[(10,13),(16,30),(33,23)]]
 anchors_yolo_tiny = [[(81, 82), (135, 169), (344, 319)], [(10, 14), (23, 27), (37, 58)]]
