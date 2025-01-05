@@ -40,7 +40,7 @@ def main():
             RETRY_TIMES_LIMIT = int(options.get("RETRY_TIMES_LIMIT", 5))
             os.environ["HASS_URL"] = options.get("HASS_URL", "http://homeassistant.local:8123/")
             os.environ["HASS_TOKEN"] = options.get("HASS_TOKEN", "")
-            os.environ["ENABLE_DATABASE_STORAGE"] = str(options.get("ENABLE_DATABASE_STORAGE", "false"))
+            os.environ["ENABLE_DATABASE_STORAGE"] = str(options.get("ENABLE_DATABASE_STORAGE", "false")).lower()
             os.environ["IGNORE_USER_ID"] = options.get("IGNORE_USER_ID", "xxxxx,xxxxx")
             os.environ["DB_NAME"] = options.get("DB_NAME", "homeassistant.db")
             os.environ["RETRY_TIMES_LIMIT"] = str(options.get("RETRY_TIMES_LIMIT", 5))
@@ -48,7 +48,7 @@ def main():
             os.environ["LOGIN_EXPECTED_TIME"] = str(options.get("LOGIN_EXPECTED_TIME", 10))
             os.environ["RETRY_WAIT_TIME_OFFSET_UNIT"] = str(options.get("RETRY_WAIT_TIME_OFFSET_UNIT", 10))
             os.environ["DATA_RETENTION_DAYS"] = str(options.get("DATA_RETENTION_DAYS", 7))
-            os.environ["RECHARGE_NOTIFY"] = str(options.get("RECHARGE_NOTIFY", "false"))
+            os.environ["RECHARGE_NOTIFY"] = str(options.get("RECHARGE_NOTIFY", "false")).lower()
             os.environ["BALANCE"] = str(options.get("BALANCE", 5.0))
             os.environ["PUSHPLUS_TOKEN"] = options.get("PUSHPLUS_TOKEN", "")
         except Exception as e:
