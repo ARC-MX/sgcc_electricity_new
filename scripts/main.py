@@ -44,6 +44,7 @@ def main():
             os.environ["IGNORE_USER_ID"] = options.get("IGNORE_USER_ID", "xxxxx,xxxxx")
             os.environ["DB_NAME"] = options.get("DB_NAME", "homeassistant.db")
             os.environ["RETRY_TIMES_LIMIT"] = options.get("RETRY_TIMES_LIMIT", 5)
+            os.environ["DRIVER_IMPLICITY_WAIT_TIME"] = options.get("DRIVER_IMPLICITY_WAIT_TIME", 60)
             os.environ["LOGIN_EXPECTED_TIME"] = options.get("LOGIN_EXPECTED_TIME", 10)
             os.environ["RETRY_WAIT_TIME_OFFSET_UNIT"] = options.get("RETRY_WAIT_TIME_OFFSET_UNIT", 10)
             os.environ["DATA_RETENTION_DAYS"] = options.get("DATA_RETENTION_DAYS", 7)
