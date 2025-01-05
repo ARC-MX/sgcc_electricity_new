@@ -4,29 +4,45 @@ import os
 import sys
 import time
 import schedule
+import json
 from datetime import datetime,timedelta
 from const import *
 from data_fetcher import DataFetcher
 
 
 def main():
+    global RETRY_TIMES_LIMIT
     if 'PYTHON_IN_DOCKER' not in os.environ: 
         # 读取 .env 文件
         import dotenv
         dotenv.load_dotenv(verbose=True)
-    global RETRY_TIMES_LIMIT
-    try:
-        PHONE_NUMBER = os.getenv("PHONE_NUMBER")
-        PASSWORD = os.getenv("PASSWORD")
-        HASS_URL = os.getenv("HASS_URL")
-        JOB_START_TIME = os.getenv("JOB_START_TIME","07:00" )
-        LOG_LEVEL = os.getenv("LOG_LEVEL","INFO")
-        VERSION = os.getenv("VERSION")
-        RETRY_TIMES_LIMIT = int(os.getenv("RETRY_TIMES_LIMIT", 5))
-    except Exception as e:
-        logging.error(f"Failing to read the .env file, the program will exit with an error message: {e}.")
-        sys.exit()
-
+        try:
+            PHONE_NUMBER = os.getenv("PHONE_NUMBER")
+            PASSWORD = os.getenv("PASSWORD")
+            HASS_URL = os.getenv("HASS_URL")
+            JOB_START_TIME = os.getenv("JOB_START_TIME","07:00" )
+            LOG_LEVEL = os.getenv("LOG_LEVEL","INFO")
+            VERSION = os.getenv("VERSION")
+            RETRY_TIMES_LIMIT = int(os.getenv("RETRY_TIMES_LIMIT", 5))
+        except Exception as e:
+            logging.error(f"Failing to read the .env file, the program will exit with an error message: {e}.")
+            sys.exit()
+    else:
+        with open('/data/options.json') as f:
+            options = json.load(f)
+        try:
+            PHONE_NUMBER = options.get("PHONE_NUMBER")
+            PASSWORD = options.get("PASSWORD")
+            HASS_URL = options.get("HASS_URL")
+            JOB_START_TIME = options.get("JOB_START_TIME", "07:00")
+            LOG_LEVEL = options.get("LOG_LEVEL", "INFO")
+            VERSION = os.getenv("VERSION")
+            RETRY_TIMES_LIMIT = int(options.get("RETRY_TIMES_LIMIT", 5))
+            os.environ["HASS_URL"] = options.get("HASS_URL", "http://homeassistant.local:8123/")
+            os.environ["HASS_TOKEN"] = options.get("HASS_TOKEN", "")
+        except Exception as e:
+            logging.error(f"Failing to read the options.json file, the program will exit with an error message: {e}.")
+            sys.exit()
     logger_init(LOG_LEVEL)
     logging.info(f"The current repository version is {VERSION}, and the repository address is https://github.com/ARC-MX/sgcc_electricity_new.git")
     current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
