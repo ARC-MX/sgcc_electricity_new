@@ -22,11 +22,7 @@ options:
   hass_url: "http://homeassistant.local:8123/"
   hass_token: ""
   job_start_time: "07:00"
-  driver_implicitly_wait_time: 60
-  retry_times_limit: 5
-  login_expected_time: 60
-  retry_wait_time_offset_unit: 10
-  log_level: "INFO"
+  retry_wait_time_offset_unit: 15
   data_retention_days: 7
   recharge_notify: false
   balance: 5.0
@@ -37,33 +33,12 @@ schema:
   ignore_user_id: str
   enable_database_storage: bool
   db_name: str
-  hass_url: str
+  hass_url: url
   hass_token: str
   job_start_time: str
-  driver_implicitly_wait_time: int
-  retry_times_limit: int
-  login_expected_time: int
-  retry_wait_time_offset_unit: int
+  retry_wait_time_offset_unit: int(2,30)
   log_level: str
   data_retention_days: int
   recharge_notify: bool 
   balance: float 
   pushplus_token: str
-environment:
-  PHONE_NUMBER: "${phone}"
-  PASSWORD: "${password}"
-  IGNORE_USER_ID: "${ignore_user_id}"
-  ENABLE_DATABASE_STORAGE: "${enable_database_storage}"
-  DB_NAME: "${db_name}"
-  HASS_URL: "${hass_url}"
-  HASS_TOKEN: "${hass_token}"
-  JOB_START_TIME: "${job_start_time}"
-  DRIVER_IMPLICITLY_WAIT_TIME: "${driver_implicitly_wait_time}"
-  RETRY_TIMES_LIMIT: "${retry_times_limit}"
-  LOGIN_EXPECTED_TIME: "${login_expected_time}"
-  RETRY_WAIT_TIME_OFFSET_UNIT: "${retry_wait_time_offset_unit}"
-  LOG_LEVE: "${log_level}"
-  DATA_RETENTION_DAYS: "${data_retention_days}"
-  RECHARGE_NOTIFY: "${recharge_notify}"
-  BALANCE: "${balance}"
-  PUSHPLUS_TOKEN: "${pushplus_token}"
