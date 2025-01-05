@@ -31,14 +31,14 @@
 
 1. 在homeassistant以实体显示：
 
-   | 实体entity_id                          | 说明                                                                  |
-   | -------------------------------------- | --------------------------------------------------------------------- |
-   | sensor.last_electricity_usage_xxxx     | 最近一天用电量，单位KWH、度。属性含present_date（查询电量代表的日期） |
-   | sensor.electricity_charge_balance_xxxx | 预付费显示电费余额，反之显示上月应交电费，单位元                      |
-   | sensor.yearly_electricity_usage_xxxx   | 今年总用电量，单位KWH、度。                                           |
-   | sensor.yearly_electricity_charge_xxxx  | 今年总用电费用，单位元                                                |
+   | 实体entity_id                          | 说明                                                                    |
+   | -------------------------------------- | ----------------------------------------------------------------------- |
+   | sensor.last_electricity_usage_xxxx     | 最近一天用电量，单位KWH、度。属性含present_date（查询电量代表的日期）   |
+   | sensor.electricity_charge_balance_xxxx | 预付费显示电费余额，反之显示上月应交电费，单位元                        |
+   | sensor.yearly_electricity_usage_xxxx   | 今年总用电量，单位KWH、度。                                             |
+   | sensor.yearly_electricity_charge_xxxx  | 今年总用电费用，单位元                                                  |
    | sensor.month_electricity_usage_xxxx    | 最近一个月用电量，单位KWH、度。属性含present_date（查询电量代表的日期） |
-   | sensor.month_electricity_charge_xxxx   | 上月总用电费用，单位元     属性含present_date（查询电量代表的日期）   |
+   | sensor.month_electricity_charge_xxxx   | 上月总用电费用，单位元     属性含present_date（查询电量代表的日期）     |
 2. 可选，近三十天每日用电量数据（SQLite数据库）
    数据库表名为 daily+userid ，在项目路径下有个homeassistant.db  的数据库文件就是；
    如需查询可以用
@@ -123,22 +123,11 @@ HASS_URL="http://localhost:8123/"
 HASS_TOKEN="eyxxxxx"
 
 ## selenium运行参数
-# 任务开始时间，24小时制，例如"07:00"则为每天早上7点执行，第一次启动程序如果时间晚于早上7点则会立即执行一次，每隔12小时执行一次。
+# 任务开始时间，24小时制，例如"07:00”则为每天早上7点执行，第一次启动程序如果时间晚于早上7点则会立即执行一次，每隔12小时执行一次。
 JOB_START_TIME="07:00"
+# 每次操作等待时间，推荐设定范围为[2,30]，该值表示每次点击网页后所要等待数据加载的时间，如果出现“no such element”诸如此类的错误可适当调大该值，如果硬件性能较好可以适当调小该值
+RETRY_WAIT_TIME_OFFSET_UNIT=15
 
-## 其他默认参数
-# 浏览器默认等待时间，秒。
-DRIVER_IMPLICITY_WAIT_TIME=60
-# 登录重试次数
-RETRY_TIMES_LIMIT=5
-# 登录超时时间，秒
-LOGIN_EXPECTED_TIME=60
-RETRY_WAIT_TIME_OFFSET_UNIT=10
-
-
-## 日志级别
-# 例如“DUBUG”可以查看出错情况
-LOG_LEVEL="INFO"
 
 ## 记录的天数, 仅支持填写 7 或 30
 # 国网原本可以记录 30 天,现在不开通智能缴费只能查询 7 天造成错误
@@ -395,11 +384,13 @@ type: vertical-stack
 2024-07-03：新增每天定时执行两次，添加配置默认增加近 7 天每日电量写入数据, 可修改为 30 天。
 2024-07-05：新增余额不足提醒功能。
 2024-12-10：新增忽略指定用户ID的功能：针对一些用户拥有充电或者发电账户，可以使用 IGNORE_USER_ID 环境变量忽略特定的ID。
+2025-01-05：新增Homeassistant Add-on部署方式。
 TO-DO
 
 - [X] 增加离线滑动验证码识别方案
 - [X] 添加默认推送服务，电费余额不足提醒
-- [ ] 。。。
+- [X] 添加Homeassistant Add-on安装方式，在此感谢[Ami8834671](https://github.com/Ami8834671), [DuanXDong](https://github.com/DuanXDong)等小伙伴的idea和贡献
+- [ ] 添加置Homeassistant integration
 
 ## **技术交流群**
 
