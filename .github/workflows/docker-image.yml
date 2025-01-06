@@ -5,7 +5,7 @@ on:
     inputs:
       version:
         description: 'version of this branch'
-        default: 'v1.6.3'
+        default: 'v1.6.4'
         required: true
         type: string
     paths:
@@ -44,7 +44,7 @@ jobs:
           else
             TAG_ARCH=$ARCH
           fi
-          docker buildx build --build-arg VERSION=${VERSION} --platform linux/${ARCH} -t ${DOCKER_IMAGE}-${TAG_ARCH}:latest -t ${DOCKER_IMAGE}-${TAG_ARCH}:${VERSION} -t ${DOCKER_IMAGE}:latest-${ARCH} -t ${DOCKER_IMAGE}:${VERSION}-${ARCH}  --file Dockerfile-for-github-action --push .
+          docker buildx build --build-arg VERSION=${VERSION} --platform linux/${ARCH} -t ${DOCKER_IMAGE}-${TAG_ARCH}:latest -t ${DOCKER_IMAGE}-${TAG_ARCH}:${VERSION}  --file Dockerfile-for-github-action --push .
         done
 
     - name: Log into Aliyun hub registry and push Docker image
@@ -62,5 +62,5 @@ jobs:
           else
             TAG_ARCH=$ARCH
           fi
-          docker buildx build --build-arg VERSION=${VERSION} --platform linux/${ARCH} -t ${DOCKER_IMAGE}-${TAG_ARCH}:latest -t ${DOCKER_IMAGE}-${TAG_ARCH}:${VERSION} -t ${DOCKER_IMAGE}:latest-${ARCH} -t ${DOCKER_IMAGE}:${VERSION}-${ARCH}  --file Dockerfile-for-github-action --push .
+          docker buildx build --build-arg VERSION=${VERSION} --platform linux/${ARCH} -t ${DOCKER_IMAGE}-${TAG_ARCH}:latest -t ${DOCKER_IMAGE}-${TAG_ARCH}:${VERSION}  --file Dockerfile-for-github-action --push .
         done

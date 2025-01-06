@@ -1,5 +1,5 @@
 name: "SGCC Electricity"
-version: "v0.1.0"
+version: "v1.6.4"
 slug: "sgcc_electricity"
 description: "获取国网电费数据的插件"
 url: "https://github.com/ARC-MX/sgcc_electricity_new"
@@ -10,7 +10,7 @@ host_network: true
 startup: application
 boot: auto
 init: false
-# image: "registry.cn-hangzhou.aliyuncs.com/arcw/sgcc_electricity-{arch}"
+image: "registry.cn-hangzhou.aliyuncs.com/arcw/sgcc_electricity-{arch}"
 map:
   - config:rw
 options:
@@ -37,7 +37,6 @@ schema:
   HASS_TOKEN: str
   JOB_START_TIME: str
   RETRY_WAIT_TIME_OFFSET_UNIT: int(2,30)
-  LOG_LEVEL: str
   DATA_RETENTION_DAYS: int
   RECHARGE_NOTIFY: bool 
   BALANCE: float 

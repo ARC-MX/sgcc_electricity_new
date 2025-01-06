@@ -623,7 +623,6 @@ class DataFetcher:
                     self.insert_expand_data(dic)
                     dic = {'name': f"{month[index]}charge", 'value': f"{month_charge[index]}"}
                     self.insert_expand_data(dic)
-                    logging.info(f"Get month power charge for {user_id} successfully, {month[index]} usage is {month_usage[index]} KWh, charge is {month_charge[index]} CNY.")
                 except Exception as e:
                     logging.debug(f"The electricity consumption of {month[index]} failed to save to the database, which may already exist: {str(e)}")
             if month_charge:
