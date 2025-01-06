@@ -316,9 +316,10 @@ class DataFetcher:
             logging.error(
                 f"Webdriver quit abnormly, reason: {e}. {self.RETRY_TIMES_LIMIT} retry times left.")
             driver.quit()
+            return
 
         logging.info(f"Login successfully on {LOGIN_URL}")
-        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
+        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
         logging.info(f"Try to get the userid list")
         user_id_list = self._get_user_ids(driver)
         logging.info(f"Here are a total of {len(user_id_list)} userids, which are {user_id_list} among which {self.IGNORE_USER_ID} will be ignored.")
@@ -430,6 +431,10 @@ class DataFetcher:
 
     def _get_user_ids(self, driver):
         try:
+            # 刷新网页
+            driver.refresh()
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
+            element = WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(EC.presence_of_element_located((By.CLASS_NAME, 'el-dropdown')))
             # click roll down button for user id
             self._click_button(driver, By.XPATH, "//div[@class='el-dropdown']/span")
             logging.debug(f'''self._click_button(driver, By.XPATH, "//div[@class='el-dropdown']/span")''')
@@ -459,7 +464,11 @@ class DataFetcher:
     def _get_electric_balance(self, driver):
         try:
             balance = driver.find_element(By.CLASS_NAME, "num").text
-            return float(balance)
+            balance_text = driver.find_element(By.CLASS_NAME, "amttxt").text
+            if "欠费" in balance_text :
+                return -float(balance)
+            else:
+                return float(balance)
         except:
             return None
 
@@ -552,6 +561,8 @@ class DataFetcher:
     def _get_daily_usage_data(self, driver):
         """储存指定天数的用电量"""
         retention_days = int(os.getenv("DATA_RETENTION_DAYS", 7))  # 默认值为7天
+        self._click_button(driver, By.XPATH, "//div[@class='el-tabs__nav is-top']/div[@id='tab-second']")
+        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
 
         # 7 天在第一个 label, 30 天 开通了智能缴费之后才会出现在第二个, (sb sgcc)
         if retention_days == 7:

@@ -31,14 +31,14 @@
 
 1. 在homeassistant以实体显示：
 
-   | 实体entity_id                          | 说明                                                                    |
-   | -------------------------------------- | ----------------------------------------------------------------------- |
-   | sensor.last_electricity_usage_xxxx     | 最近一天用电量，单位KWH、度。属性含present_date（查询电量代表的日期）   |
-   | sensor.electricity_charge_balance_xxxx | 预付费显示电费余额，反之显示上月应交电费，单位元                        |
-   | sensor.yearly_electricity_usage_xxxx   | 今年总用电量，单位KWH、度。                                             |
-   | sensor.yearly_electricity_charge_xxxx  | 今年总用电费用，单位元                                                  |
-   | sensor.month_electricity_usage_xxxx    | 最近一个月用电量，单位KWH、度。属性含present_date（查询电量代表的日期） |
-   | sensor.month_electricity_charge_xxxx   | 上月总用电费用，单位元     属性含present_date（查询电量代表的日期）     |
+   | 实体entity_id                          | 说明                                               |
+   | -------------------------------------- | -------------------------------------------------- |
+   | sensor.last_electricity_usage_xxxx     | 最近一天用电量，单位KWH、度。                      |
+   | sensor.electricity_charge_balance_xxxx | 预付费显示电费余额，反之显示上月应交电费，单位元。 |
+   | sensor.yearly_electricity_usage_xxxx   | 今年总用电量，单位KWH、度。                        |
+   | sensor.yearly_electricity_charge_xxxx  | 今年总用电费，单位元。                             |
+   | sensor.month_electricity_usage_xxxx    | 最近一个月用电量，单位KWH、度。                    |
+   | sensor.month_electricity_charge_xxxx   | 上月总用电费，单位元。                             |
 2. 可选，近三十天每日用电量数据（SQLite数据库）
    数据库表名为 daily+userid ，在项目路径下有个homeassistant.db  的数据库文件就是；
    如需查询可以用
@@ -188,6 +188,7 @@ docker-compose logs sgcc_electricity_app
 **sensor.electricity_charge_balance_xxxx 为余额传感器**
 
 5. 配置configuration.yaml文件, 将下面中的_xxxx 替换为自己log中的_xxxx后缀。
+6. 由于是API方式传递传感器数据，所以要想重启ha实体ID可用，必须配置如下
 
 ```yaml
 template:
@@ -197,8 +198,8 @@ template:
         event_data:
           entity_id: sensor.electricity_charge_balance_xxxx
     sensor:
-      - name: electricity_charge_balance_entity_xxxx
-        unique_id: electricity_charge_balance_entity_xxxx
+      - name: electricity_charge_balance_xxxx
+        unique_id: electricity_charge_balance_xxxx
         state: "{{ states('sensor.electricity_charge_balance_xxxx') }}"
         state_class: total
         unit_of_measurement: "CNY"
@@ -210,8 +211,8 @@ template:
         event_data:
           entity_id: sensor.last_electricity_usage_xxxx
     sensor:
-      - name: last_electricity_usage_entity_xxxx
-        unique_id: last_electricity_usage_entity_xxxx
+      - name: last_electricity_usage_xxxx
+        unique_id: last_electricity_usage_xxxx
         state: "{{ states('sensor.last_electricity_usage_xxxx') }}"
         state_class: measurement
         unit_of_measurement: "kWh"
@@ -223,8 +224,8 @@ template:
         event_data:
           entity_id: sensor.month_electricity_usage_xxxx
     sensor:
-      - name: month_electricity_usage_entity_xxxx
-        unique_id: month_electricity_usage_entity_xxxx
+      - name: month_electricity_usage_xxxx
+        unique_id: month_electricity_usage_xxxx
         state: "{{ states('sensor.month_electricity_usage_xxxx') }}"
         state_class: measurement
         unit_of_measurement: "kWh"
@@ -236,8 +237,8 @@ template:
         event_data:
           entity_id: sensor.month_electricity_charge_xxxx
     sensor:
-      - name: month_electricity_charge_entity_xxxx
-        unique_id: month_electricity_charge_entity_xxxx
+      - name: month_electricity_charge_xxxx
+        unique_id: month_electricity_charge_xxxx
         state: "{{ states('sensor.month_electricity_charge_xxxx') }}"
         state_class: measurement
         unit_of_measurement: "CNY"
@@ -249,8 +250,8 @@ template:
         event_data:
           entity_id: sensor.yearly_electricity_usage_xxxx
     sensor:
-      - name: yearly_electricity_usage_entity_xxxx
-        unique_id: yearly_electricity_usage_entity_xxxx
+      - name: yearly_electricity_usage_xxxx
+        unique_id: yearly_electricity_usage_xxxx
         state: "{{ states('sensor.yearly_electricity_usage_xxxx') }}"
         state_class: total_increasing
         unit_of_measurement: "kWh"
@@ -262,8 +263,8 @@ template:
         event_data:
           entity_id: sensor.yearly_electricity_charge_xxxx
     sensor:
-      - name: yearly_electricity_charge_entity_xxxx
-        unique_id: yearly_electricity_charge_entity_xxxx
+      - name: yearly_electricity_charge_xxxx
+        unique_id: yearly_electricity_charge_xxxx
         state: "{{ states('sensor.yearly_electricity_charge_xxxx') }}"
         state_class: total_increasing
         unit_of_measurement: "CNY"
@@ -295,13 +296,15 @@ git pull
 
 <img src="assets/Ha-mini-card.jpg" alt="Ha-mini-card.jpg" style="zoom: 50%;" />
 
+将下面中的_xxxx 替换为自己log中的_xxxx后缀。
+
 ```yaml
 cards:
   - type: horizontal-stack
     cards:
       - animate: true
         entities:
-          - entity: sensor.last_electricity_usage_0065
+          - entity: sensor.last_electricity_usage_xxxx
             name: 国网每日用电量
             aggregate_func: first
             show_state: true
@@ -314,7 +317,21 @@ cards:
     cards:
       - animate: true
         entities:
-          - entity: sensor.month_electricity_usage_0065
+          - entity: sensor.month_electricity_charge_xxxx
+            name: 国网上月电费
+            aggregate_func: first
+            show_state: true
+            show_points: true
+        group_by: date
+        hour24: true
+        hours_to_show: 240
+        type: custom:mini-graph-card
+        #年底和年头显示上个月电费
+  - type: horizontal-stack
+    cards:
+      - animate: true
+        entities:
+          - entity: sensor.month_electricity_usage_xxxx
             name: 当月用电量
             aggregate_func: first
             show_state: true
@@ -325,8 +342,8 @@ cards:
         type: custom:mini-graph-card
       - animate: true
         entities:
-          - entity: sensor.electricity_charge_balance_0065
-            name: 电费余额
+          - entity: sensor.electricity_charge_balance_xxxx
+            name: 当月电费余额
             aggregate_func: first
             show_state: true
             show_points: true
@@ -338,7 +355,7 @@ cards:
     cards:
       - animate: true
         entities:
-          - entity: sensor.yearly_electricity_usage_0065
+          - entity: sensor.yearly_electricity_usage_xxxx
             name: 今年总用电量
             aggregate_func: first
             show_state: true
@@ -349,7 +366,7 @@ cards:
         type: custom:mini-graph-card
       - animate: true
         entities:
-          - entity: sensor.yearly_electricity_charge_0065
+          - entity: sensor.yearly_electricity_charge_xxxx
             name: 今年总用电费用
             aggregate_func: first
             show_state: true
