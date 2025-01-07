@@ -1,14 +1,6 @@
-name: Report an issue with ESPHome
-description: Create a report to help ESPHome improve.
+name: 向我报告问题，或者你遇到了问题
+description: 创建问题
 body:
-  - type: markdown
-    attributes:
-      value: |
-        此问题表单仅用于报告错误！
-
-        如果您有功能或增强请求，请使用 [功能请求][fr] 仓库。
-
-        [fr]: https://github.com/esphome/feature-requests/issues/new?assignees=&labels=&template=feature_request.md
   - type: textarea
     validations:
       required: true
@@ -28,9 +20,9 @@ body:
     validations:
       required: true
     attributes:
-      label: ESPHome 哪个版本存在此问题？
+      label:  哪个版本存在此问题？
       description: >
-        ESPHome 的版本，如 1.19、2021.9.0 或 2021.XX.X-dev。
+        Releases发行版
   - type: dropdown
     validations:
       required: true
@@ -38,57 +30,22 @@ body:
     attributes:
       label: 您使用的是哪种安装方式？
       options:
-        - Home Assistant 插件
-        - Docker
-        - pip
+        - Windows Docker环境
+        - Linxu Docker环境
+        - 群晖Docker环境
+        - 其他环境请说明
   - type: input
     validations:
       required: false
     attributes:
-      label: Home Assistant 哪个版本存在此问题？
+      label: Home Assistant core 哪个版本存在此问题？
       description: >
         Home Assistant 的版本，如 2021.8。
-  - type: dropdown
-    validations:
-      required: true
-    id: platform
-    attributes:
-      label: 您使用的平台是什么？
-      options:
-        - ESP8266
-        - ESP32
-        - ESP32-IDF
-        - RP2040
-        - BK72XX
-        - RTL87XX
-  - type: input
-    id: board
-    attributes:
-      label: 开发板
-      description: >
-        您使用的开发板名称。例如，Sonoff Basic、NodeMCU、Shelly。
-  - type: input
-    id: component_name
-    attributes:
-      label: 导致问题的组件
-      description: >
-        组件或平台的名称。例如，api/i2c 或 ultrasonic。
-  - type: markdown
-    attributes:
-      value: |
-        # 详细信息
-  - type: textarea
-    id: config
-    attributes:
-      label: YAML 配置
-      description: |
-        在此包含一个完整的 YAML 配置文件，展示此问题。最好提供 *完整* 文件 - 不要假设哪些内容不重要。如果配置文件较大或较复杂，请将其简化为最小的文件 *且仍能展示问题*。如果您没有提供足够的信息以 *轻松* 复现问题，您的错误报告很可能不会得到关注。日志不应放在此处，请在下面附加。
-      render: yaml
   - type: textarea
     id: logs
     attributes:
       label: 日志中是否有任何可能对我们有用的信息？
-      description: 例如，错误消息或堆栈跟踪。串口或 USB 日志比 WiFi 日志更有用。
+      description: 例如，docker logs -f <容器ID>
       render: txt
   - type: textarea
     id: additional
