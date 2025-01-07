@@ -32,7 +32,7 @@ body:
         - Windows Docker环境
         - Linxu Docker环境
         - 群晖Docker环境
-        - 其他环境请说明
+        - 其他环境请在附加信息说明
   - type: input
     validations:
       required: false
@@ -45,7 +45,6 @@ body:
     attributes:
       label: 日志中是否有任何可能对我们有用的信息？
       description: 例如，docker logs -f <容器ID>
-      render: txt
   - type: textarea
     id: additional
     attributes:
