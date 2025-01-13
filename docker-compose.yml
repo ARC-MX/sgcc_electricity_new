@@ -14,5 +14,5 @@ services:
     restart: unless-stopped
     # volumes:
     #   - ./:/data        # if you want to read homeassistant.db, homeassistant.db is in the container at /data/
-    command: python3 main.py 
-
+    command: python3 main.py
+    init: true
