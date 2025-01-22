@@ -295,7 +295,19 @@ class DataFetcher:
             driver = self._get_webdriver()
         
         driver.maximize_window() 
+        logging.info(f"Check maintain !")
         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+        try:
+            if self._check_maintain(driver):
+                logging.info("No maintain !")
+            else:
+                logging.info("The State Grid website is under maintenance and user data cannot be obtained at present. Please wait for the maintenance to be completed!")
+                raise Exception("maintaining!")
+        except Exception as e:
+            logging.error(
+                f"Webdriver quit abnormly, reason: {e}. {self.RETRY_TIMES_LIMIT} retry times left.")
+            driver.quit()
+            return
         logging.info("Webdriver initialized.")
         updator = SensorUpdator()
         
@@ -353,6 +365,15 @@ class DataFetcher:
 
         driver.quit()
 
+    def _check_maintain(self, driver):
+        driver.get(BALANCE_URL)
+        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+        elbox = driver.find_element(By.CLASS_NAME, "el-message-box__message").text
+        if (elbox.find("维护") > 0) or (elbox.find("升级") > 0) :
+            logging.info(f"Webdriver quit :{elbox}")
+            return False
+        else:
+            return True
 
     def _get_current_userid(self, driver):
         current_userid = driver.find_element(By.XPATH, '//*[@id="app"]/div/div/article/div/div/div[2]/div/div/div[1]/div[2]/div/div/div/div[2]/div/div[1]/div/ul/div/li[1]/span[2]').text
