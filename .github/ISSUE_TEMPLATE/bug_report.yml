@@ -1,0 +1,64 @@
+name: 向我报告问题，或者你遇到了问题，或者对功能进行请求
+description: 创建问题
+body:
+  - type: textarea
+    validations:
+      required: true
+    id: problem
+    attributes:
+      label: 问题描述
+      description: >-
+        在此描述您遇到的问题，以便与维护者沟通。告诉我们您正在尝试做什么，以及发生了什么。
+        提供一个清晰简洁的问题描述。
+  - type: markdown
+    attributes:
+      value: |
+        ## 环境
+  - type: input
+    id: version
+    validations:
+      required: true
+    attributes:
+      label:  哪个版本存在此问题？
+      description: >
+        Releases发行版
+  - type: dropdown
+    validations:
+      required: true
+    id: selfTest
+    attributes:
+      label: 您是否手动登录国家电网网页并尝试获取数据？
+      options:
+        - 未尝试手动获取数据
+        - 手动登录不成功
+        - 已经手动登录国网并且可以正常获取数据
+  - type: dropdown
+    validations:
+      required: true
+    id: installation
+    attributes:
+      label: 您使用的是哪种安装方式？
+      options:
+        - Windows Docker环境
+        - Linxu Docker环境
+        - 群晖Docker环境
+        - 其他环境请在附加信息说明
+  - type: input
+    validations:
+      required: false
+    attributes:
+      label: Home Assistant core 哪个版本，安装方式，
+      description: >
+        Home Assistant 的版本，如 2021.8。 安装方式Hassos Docker 
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志中是否有任何可能对我们有用的信息？
+      description: 例如，docker logs -f <容器ID>
+  - type: textarea
+    id: additional
+    attributes:
+      label: 附加信息
+      description: >
+        如果您有任何附加信息提供给我们，请在下面的字段中填写。
+        请注意，您可以通过拖放文件在下面的字段中附加截图或屏幕录制。
