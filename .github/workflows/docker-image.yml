@@ -5,7 +5,7 @@ on:
     inputs:
       version:
         description: 'version of this branch'
-        default: 'v1.6.4'
+        default: 'v1.6.5'
         required: true
         type: string
     paths:

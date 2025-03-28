@@ -295,19 +295,7 @@ class DataFetcher:
             driver = self._get_webdriver()
         
         driver.maximize_window() 
-        logging.info(f"Check maintain !")
         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
-        try:
-            if self._check_maintain(driver):
-                logging.info("No maintain !")
-            else:
-                logging.info("The State Grid website is under maintenance and user data cannot be obtained at present. Please wait for the maintenance to be completed!")
-                raise Exception("maintaining!")
-        except Exception as e:
-            logging.error(
-                f"Webdriver quit abnormly, reason: {e}. {self.RETRY_TIMES_LIMIT} retry times left.")
-            driver.quit()
-            return
         logging.info("Webdriver initialized.")
         updator = SensorUpdator()
         
@@ -365,24 +353,18 @@ class DataFetcher:
 
         driver.quit()
 
-    def _check_maintain(self, driver):
-        driver.get(BALANCE_URL)
-        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
-        elbox = driver.find_element(By.CLASS_NAME, "el-message-box__message").text
-        if (elbox.find("维护") > 0) or (elbox.find("升级") > 0) :
-            logging.info(f"Webdriver quit :{elbox}")
-            return False
-        else:
-            return True
 
     def _get_current_userid(self, driver):
         current_userid = driver.find_element(By.XPATH, '//*[@id="app"]/div/div/article/div/div/div[2]/div/div/div[1]/div[2]/div/div/div/div[2]/div/div[1]/div/ul/div/li[1]/span[2]').text
         return current_userid
     
     def _choose_current_userid(self, driver, userid_index):
+        target = driver.find_element(By.CLASS_NAME, "button_confirm").text
+        if "确认" in target:
+            self._click_button(driver, By.XPATH, f'''//*[@id="app"]/div/div[2]/div/div/div/div[2]/div[2]/div/button''')
         self._click_button(driver, By.CLASS_NAME, "el-input__suffix")
         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
-        self._click_button(driver, By.XPATH, f"/html/body/div[2]/div[1]/div[1]/ul/li[{userid_index+1}]/span")
+        self._click_button(driver, By.XPATH, f"/html/body/div[2]/div[1]/div[{userid_index+1}]/ul/li/span")
 
     def _get_all_data(self, driver, user_id, userid_index):
         balance = self._get_electric_balance(driver)
