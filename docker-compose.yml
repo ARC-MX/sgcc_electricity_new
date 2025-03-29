@@ -3,16 +3,13 @@ services:
     env_file:
       - .env
     image: registry.cn-hangzhou.aliyuncs.com/arcw/sgcc_electricity:latest # for use docker.io: arcw/sgcc_electricity:latest
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile
     container_name: sgcc_electricity
     network_mode: "host"
     environment:
       - SET_CONTAINER_TIMEZONE=true
       - CONTAINER_TIMEZONE=Asia/Shanghai
     restart: unless-stopped
-    # volumes:
-    #   - ./:/data        # if you want to read homeassistant.db, homeassistant.db is in the container at /data/
+    volumes:
+      - ./:/data        # if you want to read homeassistant.db, homeassistant.db is in the container at /data/
     command: python3 main.py
     init: true
