@@ -1,6 +1,6 @@
 import logging
 import os
-from datetime import datetime
+from datetime import datetime,timedelta
 
 import requests
 from sympy import true
@@ -76,12 +76,10 @@ class SensorUpdator:
             if usage
             else MONTH_CHARGE_SENSOR_NAME + postfix
         )
-        if datetime.now().month == 1:
-            last_year = datetime.now().year -1 
-            last_reset = datetime.now().replace(year=last_year, month=12).strftime("%Y-%m")
-        else:
-            last_updated = datetime.now().month - 1
-            last_reset = datetime.now().replace(month=last_updated).strftime("%Y-%m")
+        current_date = datetime.now()
+        first_day_of_current_month = current_date.replace(day=1)
+        last_day_of_previous_month = first_day_of_current_month - timedelta(days=1)
+        last_reset = last_day_of_previous_month.strftime("%Y-%m")
         request_body = {
             "state": sensorState,
             "unique_id": sensorName,
