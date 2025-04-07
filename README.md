@@ -299,58 +299,49 @@ git pull
 将下面中的_xxxx 替换为自己log中的_xxxx后缀。
 
 ```yaml
+type: vertical-stack
 cards:
+  - type: custom:mini-graph-card
+    entities:
+      - entity: sensor.last_electricity_usage_xxxx
+        name: 国网每日用电量
+        aggregate_func: first
+        show_state: true
+        show_points: true
+        icon: mdi:lightning-bolt-outline
+      - entity: sensor.electricity_charge_balance_xxxx
+        name: 电费余额
+        aggregate_func: first
+        show_state: true
+        show_points: true
+        color: "#e74c3c"
+        icon: mdi:cash
+        y_axis: secondary
+    group_by: date
+    hour24: true
+    hours_to_show: 240
+    lower_bound: 0
+    upper_bound: 10
+    lower_bound_secondary: 0
+    upper_bound_secondary: 120
+    show:
+      icon: false
   - type: horizontal-stack
     cards:
-      - animate: true
-        entities:
-          - entity: sensor.last_electricity_usage_xxxx
-            name: 国网每日用电量
-            aggregate_func: first
-            show_state: true
-            show_points: true
-        group_by: date
-        hour24: true
-        hours_to_show: 240
-        type: custom:mini-graph-card
-  - type: horizontal-stack
-    cards:
-      - animate: true
-        entities:
-          - entity: sensor.month_electricity_charge_xxxx
-            name: 国网上月电费
-            aggregate_func: first
-            show_state: true
-            show_points: true
-        group_by: date
-        hour24: true
-        hours_to_show: 240
-        type: custom:mini-graph-card
-        #年底和年头显示上个月电费
-  - type: horizontal-stack
-    cards:
-      - animate: true
-        entities:
-          - entity: sensor.month_electricity_usage_xxxx
-            name: 当月用电量
-            aggregate_func: first
-            show_state: true
-            show_points: true
-        group_by: date
-        hour24: true
-        hours_to_show: 240
-        type: custom:mini-graph-card
-      - animate: true
-        entities:
-          - entity: sensor.electricity_charge_balance_xxxx
-            name: 当月电费余额
-            aggregate_func: first
-            show_state: true
-            show_points: true
-        group_by: date
-        hour24: true
-        hours_to_show: 240
-        type: custom:mini-graph-card
+      - graph: none
+        type: sensor
+        entity: sensor.month_electricity_charge_xxxx
+        detail: 1
+        name: 上月电费
+        icon: ""
+        unit: 元
+      - graph: none
+        type: sensor
+        entity: sensor.month_electricity_usage_xxxx
+        detail: 1
+        name: 上月用电量
+        unit: 度
+        icon: mdi:lightning-bolt-outline
   - type: horizontal-stack
     cards:
       - animate: true
@@ -375,7 +366,6 @@ cards:
         hour24: true
         hours_to_show: 240
         type: custom:mini-graph-card
-type: vertical-stack
 ```
 
 ## 5）电量通知
