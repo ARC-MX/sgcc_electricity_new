@@ -216,9 +216,9 @@ class DataFetcher:
         logging.info(f"Open LOGIN_URL:{LOGIN_URL}.\r")
         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
         # swtich to username-password login page
-        self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[1]/div[1]/div[2]/span')
         driver.find_element(By.CLASS_NAME, "user").click()
         logging.info("find_element 'user'.\r")
+        self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[1]/div[1]/div[2]/span')
         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
         # click agree button
         self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[2]/div[1]/form/div[1]/div[3]/div/span[2]')
