@@ -1,8 +1,8 @@
 requests==2.31.0
-selenium==4.19.0
+selenium==4.34.2
 schedule==1.2.1
 Pillow==10.1.0
-undetected_chromedriver==3.5.4
+webdriver-manager==4.0.2
 onnxruntime==1.18.1
 numpy==1.26.2
 # python-dotenv

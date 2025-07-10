@@ -5,10 +5,10 @@ import sys
 import time
 import schedule
 import json
+import random
 from datetime import datetime,timedelta
 from const import *
 from data_fetcher import DataFetcher
-
 
 def main():
     global RETRY_TIMES_LIMIT
@@ -67,11 +67,17 @@ def main():
     logging.info(f"The current date is {current_datetime}.")
 
     fetcher = DataFetcher(PHONE_NUMBER, PASSWORD)
-    logging.info(f"The current logged-in user name is {PHONE_NUMBER}, the homeassistant address is {HASS_URL}, and the program will be executed every day at {JOB_START_TIME}.")
 
-    next_run_time = datetime.strptime(JOB_START_TIME, "%H:%M") + timedelta(hours=12)
-    logging.info(f'Run job now! The next run will be at {JOB_START_TIME} and {next_run_time.strftime("%H:%M")} every day')
-    schedule.every().day.at(JOB_START_TIME).do(run_task, fetcher)
+    # 生成随机延迟时间（-10分钟到+10分钟）
+    random_delay_minutes = random.randint(-10, 10)
+    parsed_time = datetime.strptime(JOB_START_TIME, "%H:%M") + timedelta(minutes=random_delay_minutes)
+    logging.info(f"The current logged-in user name is {PHONE_NUMBER}, the homeassistant address is {HASS_URL}, and the program will be executed every day at {parsed_time}.")
+
+    # 添加随机延迟
+    next_run_time = parsed_time + timedelta(hours=12)
+
+    logging.info(f'Run job now! The next run will be at {parsed_time.strftime("%H:%M")} and {next_run_time.strftime("%H:%M")} every day')
+    schedule.every().day.at(parsed_time.strftime("%H:%M")).do(run_task, fetcher)
     schedule.every().day.at(next_run_time.strftime("%H:%M")).do(run_task, fetcher)
     run_task(fetcher)
 
