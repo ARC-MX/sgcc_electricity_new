@@ -4,14 +4,18 @@
 
 **注意** 有很多新手都在提交验证码不能识别的相关issue，特在此统一说明：国网每天有登录限制，每天只能登录有限的几次，超过限制验证码识别成功也不会登录成功。因此，诸如[issue47](https://github.com/ARC-MX/sgcc_electricity_new/issues/47),[issue50](https://github.com/ARC-MX/sgcc_electricity_new/issues/50),[issue29](https://github.com/ARC-MX/sgcc_electricity_new/issues/29)这些都是这个问题，以后就不做回复了。
 
+### 入群方式
+
 最近issue太多实在是回复不过来了，特此添加QQ交流群
+通过为项目点star并微信打赏备注QQ名或QQ号等信息，入群会审核这些信息
 [关于创建QQ付费群的说明](https://github.com/ARC-MX/sgcc_electricity_new/issues/78)
 
 ### 支付宝&微信 打赏码
 
 <p align="center">
 <img src="assets/Alipay.png"  width=200 style="margin-right: 70px";/>
-<img src="assets/WeiChat.jpg"  width=200/>
+<img src="assets/WeiChat.jpg"  width=200 style="margin-right: 70px">
+<img src="assets/QQ_group.jpg"  width=200/" >
 </p>
 
 # ⚡️国家电网电力获取
@@ -406,11 +410,5 @@ TO-DO
 ## **技术交流群**
 
 由于现在用户越来越多，稍有问题大家就在github上发issue，我有点回复不过来了，故创建一个付费加入的QQ群。该群只是方便大家讨论，不承诺技术协助，我想大多数用户参考历史issue和文档都能解决自己的问题
-
-### 入群方式
-
-通过为项目点star并微信打赏备注QQ名或QQ号等信息，入群会审核这些信息
-
-<img src="assets/QQ_group.jpg"  width=200 style="margin-right: 70px" >
 
 ### 再次说明，希望大家通过认真看文档和浏览历史issue解决问题，毕竟收费群不是开源项目的本意。

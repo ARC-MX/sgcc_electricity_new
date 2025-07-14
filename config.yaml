@@ -1,5 +1,5 @@
 name: "SGCC Electricity"
-version: "v1.6.6"
+version: "v1.6.8"
 slug: "sgcc_electricity"
 description: "获取国网电费数据的插件"
 url: "https://github.com/ARC-MX/sgcc_electricity_new"

@@ -7,11 +7,13 @@ import time
 import random
 import base64
 import sqlite3
-import undetected_chromedriver as uc
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver import ActionChains
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.edge.service import Service as EdgeService
+from webdriver_manager.microsoft import EdgeChromiumDriverManager
+from selenium.webdriver.firefox.service import Service as FirefoxService
+from webdriver_manager.firefox import GeckoDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
@@ -88,10 +90,6 @@ class DataFetcher:
         self._username = username
         self._password = password
         self.onnx = ONNX("./captcha.onnx")
-        if platform.system() == 'Windows':
-            pass
-        else:
-            self._chromium_version = self._get_chromium_version()
 
         # 获取 ENABLE_DATABASE_STORAGE 的值，默认为 False
         self.enable_database_storage = os.getenv("ENABLE_DATABASE_STORAGE", "false").lower() == "true"
@@ -119,13 +117,6 @@ class DataFetcher:
             if (not s.isalpha() and not s.isdigit()):
                 return False
         return True
-
-    # @staticmethod
-    def _get_chromium_version(self):
-        result = str(subprocess.check_output(["chromium", "--product-version"]))
-        version = re.findall(r"(\d*)\.", result)[0]
-        logging.info(f"chromium-driver version is {version}")
-        return int(version)
 
     # @staticmethod 
     def _sliding_track(self, driver, distance):# 机器模拟人工滑动轨迹
@@ -196,29 +187,35 @@ class DataFetcher:
             self.connect.commit()
         except BaseException as e:
             logging.debug(f"Data update failed: {e}")
-
                 
     def _get_webdriver(self):
-        chrome_options = Options()
-        chrome_options.add_argument('--incognito')
-        chrome_options.add_argument('--window-size=4000,1600')
-        chrome_options.add_argument('--headless')
-        chrome_options.add_argument('--no-sandbox')
-        chrome_options.add_argument('--disable-gpu')
-        chrome_options.add_argument('--disable-dev-shm-usage')
-        driver = uc.Chrome(driver_executable_path="/usr/bin/chromedriver", options=chrome_options, version_main=self._chromium_version)
-        driver.implicitly_wait(self.DRIVER_IMPLICITY_WAIT_TIME)
+        if platform.system() == 'Windows':
+            driver = webdriver.Edge(service=EdgeService(EdgeChromiumDriverManager().install()))
+        else:
+            firefox_options = webdriver.FirefoxOptions()
+            firefox_options.add_argument('--incognito')
+            firefox_options.add_argument("--start-maximized")
+            firefox_options.add_argument('--headless')
+            firefox_options.add_argument('--no-sandbox')
+            firefox_options.add_argument('--disable-gpu')
+            firefox_options.add_argument('--disable-dev-shm-usage')
+            logging.info(f"Open Firefox.\r")
+            driver = webdriver.Firefox(options=firefox_options, service=FirefoxService("/usr/bin/geckodriver"))
+            driver.implicitly_wait(self.DRIVER_IMPLICITY_WAIT_TIME)
         return driver
 
     def _login(self, driver, phone_code = False):
-
-        driver.get(LOGIN_URL)
+        try:
+            driver.get(LOGIN_URL)
+            WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(EC.visibility_of_element_located((By.CLASS_NAME, "user")))
+        except:
+            logging.debug(f"Login failed, open URL: {LOGIN_URL} failed.")
         logging.info(f"Open LOGIN_URL:{LOGIN_URL}.\r")
-        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
         # swtich to username-password login page
-        self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[1]/div[1]/div[2]/span')
         driver.find_element(By.CLASS_NAME, "user").click()
         logging.info("find_element 'user'.\r")
+        self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[1]/div[1]/div[2]/span')
         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
         # click agree button
         self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[2]/div[1]/form/div[1]/div[3]/div/span[2]')
@@ -288,11 +285,8 @@ class DataFetcher:
     def fetch(self):
 
         """main logic here"""
-        if platform.system() == 'Windows':
-            driverfile_path = r'C:\Users\mxwang\Project\msedgedriver.exe'
-            driver = webdriver.Edge(executable_path=driverfile_path)
-        else:
-            driver = self._get_webdriver()
+
+        driver = self._get_webdriver()
         
         driver.maximize_window() 
         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
