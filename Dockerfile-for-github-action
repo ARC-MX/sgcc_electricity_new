@@ -25,7 +25,7 @@ RUN apt-get --allow-releaseinfo-change update \
 
 COPY ./requirements.txt /tmp/requirements.txt
 
-RUN mkdir /data \
+RUN mkdir /share \
     && cd /tmp \
     && python3 -m pip install --upgrade pip \
     && PIP_ROOT_USER_ACTION=ignore pip install \
