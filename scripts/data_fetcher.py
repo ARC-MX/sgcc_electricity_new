@@ -18,6 +18,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 from sensor_updator import SensorUpdator
+from error_watcher import ErrorWatcher
 
 from const import *
 
@@ -204,6 +205,7 @@ class DataFetcher:
             driver.implicitly_wait(self.DRIVER_IMPLICITY_WAIT_TIME)
         return driver
 
+    @ErrorWatcher.watch
     def _login(self, driver, phone_code = False):
         try:
             driver.get(LOGIN_URL)
@@ -287,6 +289,7 @@ class DataFetcher:
         """main logic here"""
 
         driver = self._get_webdriver()
+        ErrorWatcher.instance().set_driver(driver)
         
         driver.maximize_window() 
         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
