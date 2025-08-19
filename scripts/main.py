@@ -6,6 +6,7 @@ import time
 import schedule
 import json
 import random
+from error_watcher import ErrorWatcher
 from datetime import datetime,timedelta
 from const import *
 from data_fetcher import DataFetcher
@@ -66,6 +67,9 @@ def main():
     current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     logging.info(f"The current date is {current_datetime}.")
 
+    logging.info(f"start init ErrorWatcher")
+    ErrorWatcher.init(root_dir='/data/errors')
+    logging.info(f'ErrorWatcher init done!')
     fetcher = DataFetcher(PHONE_NUMBER, PASSWORD)
 
     # 生成随机延迟时间（-10分钟到+10分钟）
