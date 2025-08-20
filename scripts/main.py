@@ -17,8 +17,8 @@ def main():
         # 读取 .env 文件
         import dotenv
         dotenv.load_dotenv(verbose=True)
-    if os.path.isfile('/share/options.json'):
-        with open('/share/options.json') as f:
+    if os.path.isfile('/data/options.json'):
+        with open('/data/options.json') as f:
             options = json.load(f)
         try:
             PHONE_NUMBER = options.get("PHONE_NUMBER")
