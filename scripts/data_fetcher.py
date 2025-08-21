@@ -545,7 +545,7 @@ class DataFetcher:
             month_element = driver.find_element(By.XPATH, "//*[@id='pane-first']/div[1]/div[2]/div[2]/div/div[3]/table/tbody").text
             month_element = month_element.split("\n")
             month_element.remove("MAX")
-            month_element = np.array(month_element).reshape(-1, 3)
+	    month_element = np.array(month_element[:-(len(month_element) % 3)]).reshape(-1, 3)
             # 将每月的用电量保存为List
             month = []
             usage = []
