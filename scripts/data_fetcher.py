@@ -525,7 +525,7 @@ class DataFetcher:
             return last_daily_date, float(usage_element.text)
         except Exception as e:
             logging.error(f"The yesterday data get failed : {e}")
-            return None
+            return None, None
 
     def _get_month_usage(self, driver):
         """获取每月用电量"""
