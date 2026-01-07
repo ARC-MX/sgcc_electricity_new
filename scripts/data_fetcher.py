@@ -213,15 +213,17 @@ class DataFetcher:
         else:
             firefox_options = webdriver.FirefoxOptions()
             firefox_options.add_argument("--incognito")
-            firefox_options.add_argument("--start-maximized")
             firefox_options.add_argument("--headless")
             firefox_options.add_argument("--no-sandbox")
             firefox_options.add_argument("--disable-gpu")
             firefox_options.add_argument("--disable-dev-shm-usage")
-            firefox_options.add_argument("--window-size=1920,1080")
+            firefox_options.add_argument("--window-size=1280,720")
+            firefox_options.add_argument("--disable-software-rasterizer")
+            firefox_options.add_argument("--memory-pressure-thresholds=10,50")
             logging.info(f"Open Firefox.\r")
             driver = webdriver.Firefox(
-                options=firefox_options, service=FirefoxService())
+                options=firefox_options, service=FirefoxService()
+            )
             driver.implicitly_wait(self.DRIVER_IMPLICITY_WAIT_TIME)
         return driver
 
@@ -340,7 +342,6 @@ class DataFetcher:
         driver = self._get_webdriver()
         ErrorWatcher.instance().set_driver(driver)
 
-        driver.maximize_window()
         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
         logging.info("Webdriver initialized.")
         updator = SensorUpdator()
