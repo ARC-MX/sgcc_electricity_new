@@ -370,6 +370,14 @@ class DataFetcher:
         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
         logging.info(f"Try to get the userid list")
         user_id_list = self._get_user_ids(driver)
+        if not user_id_list:
+            logging.error(
+                "Failed to get user id list, browser might have crashed or session expired."
+            )
+            if driver:
+                driver.quit()
+            return
+
         logging.info(
             f"Here are a total of {len(user_id_list)} userids, which are {user_id_list} among which {self.IGNORE_USER_ID} will be ignored."
         )
@@ -544,9 +552,8 @@ class DataFetcher:
 
     def _get_user_ids(self, driver):
         try:
-            # 刷新网页
-            driver.refresh()
-            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT * 2)
+            # 刷新网页改为显式等待，避免低内存环境 refresh 崩溃
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
             element = WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(
                 EC.presence_of_element_located((By.CLASS_NAME, "el-dropdown"))
             )
@@ -587,10 +594,8 @@ class DataFetcher:
                 userid_list.append(re.findall("[0-9]+", element.text)[-1])
             return userid_list
         except Exception as e:
-            logging.error(
-                f"Webdriver quit abnormly, reason: {e}. get user_id list failed."
-            )
-            driver.quit()
+            logging.error(f"Webdriver exception occurred in _get_user_ids: {e}")
+            return []
 
     def _get_electric_balance(self, driver):
         try:
