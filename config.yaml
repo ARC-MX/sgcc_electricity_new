@@ -10,6 +10,7 @@ host_network: true
 startup: application
 boot: auto
 init: false
+image: "ghcr.io/majiang213/sgcc_electricity-{arch}"
 map:
   # - addons:rw
   - config:rw
