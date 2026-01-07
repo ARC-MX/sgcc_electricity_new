@@ -1,8 +1,8 @@
 name: "SGCC Electricity"
-version: "v1.6.8-test2"
+version: "v1.6.8-patch1"
 slug: "sgcc_electricity"
-description: "获取国网电费数据的插件"
-url: "https://github.com/ARC-MX/sgcc_electricity_new"
+description: "获取国网电费数据的插件 (已修复 1 月跨年 Bug)"
+url: "https://github.com/majiang213/sgcc_electricity_new"
 arch:
   - aarch64
   - amd64
@@ -10,7 +10,6 @@ host_network: true
 startup: application
 boot: auto
 init: false
-image: "registry.cn-hangzhou.aliyuncs.com/arcw/sgcc_electricity-{arch}"
 map:
   # - addons:rw
   - config:rw
