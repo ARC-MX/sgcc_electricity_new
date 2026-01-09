@@ -46,7 +46,7 @@ class ErrorWatcher:
             @functools.wraps(f)
             def wrapped(*args, **kwargs):
                 instance = cls.instance()
-                return instance._watch_impl(f, *args, **kwargs, **kwargs)
+                return instance._watch_impl(f, *args, **kwargs)
             return wrapped
         
         if func is not None:
