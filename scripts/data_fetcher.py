@@ -99,7 +99,6 @@ class DataFetcher:
         self.LOGIN_EXPECTED_TIME = int(os.getenv("LOGIN_EXPECTED_TIME", 10))
         self.RETRY_WAIT_TIME_OFFSET_UNIT = int(os.getenv("RETRY_WAIT_TIME_OFFSET_UNIT", 10))
         self.IGNORE_USER_ID = os.getenv("IGNORE_USER_ID", "xxxxx,xxxxx").split(",")
-        self.DEFINED_USER_ID = os.getenv("DEFINED_USER_ID", "").split(",")
 
     # @staticmethod
     def _click_button(self, driver, button_search_type, button_search_key):
@@ -192,7 +191,9 @@ class DataFetcher:
                 
     def _get_webdriver(self):
         if platform.system() == 'Windows':
-            driver = webdriver.Edge(service=EdgeService(EdgeChromiumDriverManager().install()))
+            driver = webdriver.Edge(service=EdgeService(EdgeChromiumDriverManager(
+            url="https://msedgedriver.microsoft.com/",
+            latest_release_url="https://msedgedriver.microsoft.com/LATEST_RELEASE").install()))
         else:
             firefox_options = webdriver.FirefoxOptions()
             firefox_options.add_argument('--incognito')
@@ -203,7 +204,7 @@ class DataFetcher:
             firefox_options.add_argument('--disable-dev-shm-usage')
             logging.info(f"Open Firefox.\r")
             driver = webdriver.Firefox(options=firefox_options, service=FirefoxService("/usr/bin/geckodriver"))
-            driver.set_page_load_timeout(300)
+            driver.implicitly_wait(self.DRIVER_IMPLICITY_WAIT_TIME)
             # driver.implicitly_wait(self.DRIVER_IMPLICITY_WAIT_TIME)
         return driver
 
@@ -215,6 +216,7 @@ class DataFetcher:
         except:
             logging.debug(f"Login failed, open URL: {LOGIN_URL} failed.")
         logging.info(f"Open LOGIN_URL:{LOGIN_URL}.\r")
+        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
         # swtich to username-password login page
         WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(
             EC.invisibility_of_element_located((By.CLASS_NAME, 'el-loading-mask')))
@@ -223,11 +225,11 @@ class DataFetcher:
         element.click()
         logging.info("find_element 'user'.\r")
         self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[1]/div[1]/div[2]/span')
-        time.sleep(1)
+        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
         # click agree button
         self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[2]/div[1]/form/div[1]/div[3]/div/span[2]')
         logging.info("Click the Agree option.\r")
-        time.sleep(1)
+        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
         if phone_code:
             self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[1]/div[1]/div[3]/span')
             input_elements = driver.find_elements(By.CLASS_NAME, "el-input__inner")
@@ -297,7 +299,7 @@ class DataFetcher:
         ErrorWatcher.instance().set_driver(driver)
         
         driver.maximize_window() 
-        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT / 3)
+        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
         logging.info("Webdriver initialized.")
         updator = SensorUpdator()
         
@@ -321,20 +323,20 @@ class DataFetcher:
             return
 
         logging.info(f"Login successfully on {LOGIN_URL}")
-        # time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
         logging.info(f"Try to get the userid list")
         user_id_list = self._get_user_ids(driver)
         logging.info(f"Here are a total of {len(user_id_list)} userids, which are {user_id_list} among which {self.IGNORE_USER_ID} will be ignored.")
-        # time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
 
 
         for userid_index, user_id in enumerate(user_id_list):           
             try: 
                 # switch to electricity charge balance page
                 driver.get(BALANCE_URL) 
-                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT / 2)
+                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
                 self._choose_current_userid(driver,userid_index)
-                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT / 2)
+                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
                 current_userid = self._get_current_userid(driver)
                 if current_userid in self.IGNORE_USER_ID:
                     logging.info(f"The user ID {current_userid} will be ignored in user_id_list")
@@ -344,7 +346,7 @@ class DataFetcher:
                     balance, last_daily_date, last_daily_usage, yearly_charge, yearly_usage, month_charge, month_usage  = self._get_all_data(driver, user_id, userid_index)
                     updator.update_one_userid(user_id, balance, last_daily_date, last_daily_usage, yearly_charge, yearly_usage, month_charge, month_usage)
         
-                    time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT / 5)
+                    time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
             except Exception as e:
                 if (userid_index != len(user_id_list)):
                     logging.info(f"The current user {user_id} data fetching failed {e}, the next user data will be fetched.")
@@ -380,9 +382,9 @@ class DataFetcher:
         #time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
         # swithc to electricity usage page
         driver.get(ELECTRIC_USAGE_URL)
-        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT / 3)
+        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
         self._choose_current_userid(driver, userid_index)
-        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT / 3)
+        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
         # get data for each user id
         yearly_usage, yearly_charge = self._get_yearly_data(driver)
 
@@ -437,27 +439,25 @@ class DataFetcher:
         return balance, last_daily_date, last_daily_usage, yearly_charge, yearly_usage, month_charge, month_usage
 
     def _get_user_ids(self, driver):
-        if len(self.DEFINED_USER_ID) > 0:
-            return self.DEFINED_USER_ID
         try:
             # 刷新网页
             driver.refresh()
-            # time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
             element = WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(EC.presence_of_element_located((By.CLASS_NAME, 'el-dropdown')))
             # click roll down button for user id
             self._click_button(driver, By.XPATH, "//div[@class='el-dropdown']/span")
             logging.debug(f'''self._click_button(driver, By.XPATH, "//div[@class='el-dropdown']/span")''')
-            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT / 3)
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
             # wait for roll down menu displayed
             target = driver.find_element(By.CLASS_NAME, "el-dropdown-menu.el-popper").find_element(By.TAG_NAME, "li")
             logging.debug(f'''target = driver.find_element(By.CLASS_NAME, "el-dropdown-menu.el-popper").find_element(By.TAG_NAME, "li")''')
-            # time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
             WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(EC.visibility_of(target))
-            # time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
             logging.debug(f'''WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(EC.visibility_of(target))''')
             WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(
                 EC.text_to_be_present_in_element((By.XPATH, "//ul[@class='el-dropdown-menu el-popper']/li"), ":"))
-            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT / 3)
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
 
             # get user id one by one
             userid_elements = driver.find_element(By.CLASS_NAME, "el-dropdown-menu.el-popper").find_elements(By.TAG_NAME, "li")
@@ -486,12 +486,12 @@ class DataFetcher:
         try:
             if datetime.now().month == 1:
                 self._click_button(driver, By.XPATH, '//*[@id="pane-first"]/div[1]/div/div[1]/div/div/input')
-                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT / 5)
+                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
                 span_element = driver.find_element(By.XPATH, f"//span[text() = '{datetime.now().year - 1}']")
                 span_element.click()
-                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT / 2)
+                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
             self._click_button(driver, By.XPATH, "//div[@class='el-tabs__nav is-top']/div[@id='tab-first']")
-            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT / 5)
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
             # wait for data displayed
             target = driver.find_element(By.CLASS_NAME, "total")
             WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(EC.visibility_of(target))
@@ -519,7 +519,7 @@ class DataFetcher:
         try:
             # 点击日用电量
             self._click_button(driver, By.XPATH, "//div[@class='el-tabs__nav is-top']/div[@id='tab-second']")
-            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT / 5)
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
             # wait for data displayed
             usage_element = driver.find_element(By.XPATH,
                                                 "//div[@class='el-tab-pane dayd']//div[@class='el-table__body-wrapper is-scrolling-none']/table/tbody/tr[1]/td[2]/div")
@@ -539,20 +539,20 @@ class DataFetcher:
 
         try:
             self._click_button(driver, By.XPATH, "//div[@class='el-tabs__nav is-top']/div[@id='tab-first']")
-            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT / 3)
+            time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
             if datetime.now().month == 1:
                 self._click_button(driver, By.XPATH, '//*[@id="pane-first"]/div[1]/div/div[1]/div/div/input')
-                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT / 5)
+                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
                 span_element = driver.find_element(By.XPATH, f"//span[text() = '{datetime.now().year - 1}']")
                 span_element.click()
-                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT / 2)
+                time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
             # wait for month displayed
             target = driver.find_element(By.CLASS_NAME, "total")
             WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(EC.visibility_of(target))
             month_element = driver.find_element(By.XPATH, "//*[@id='pane-first']/div[1]/div[2]/div[2]/div/div[3]/table/tbody").text
             month_element = month_element.split("\n")
             month_element.remove("MAX")
-	    month_element = np.array(month_element[:-(len(month_element) % 3)]).reshape(-1, 3)
+            month_element = np.array(month_element[:-(len(month_element) % 3)]).reshape(-1, 3)
             # 将每月的用电量保存为List
             month = []
             usage = []
@@ -627,24 +627,25 @@ class DataFetcher:
             # 写入年用电电费
             dic = {'name': 'yearly_charge', 'value': f"{yearly_charge} "}
             self.insert_expand_data(dic)
-            
-            for index in range(len(date)):
-                dic = {'date': date[index], 'usage': float(usages[index])}
-                # 插入到数据库
-                try:
-                    self.insert_data(dic)
-                    logging.info(f"The electricity consumption of {usages[index]}KWh on {date[index]} has been successfully deposited into the database")
-                except Exception as e:
-                    logging.debug(f"The electricity consumption of {date[index]} failed to save to the database, which may already exist: {str(e)}")
 
-            for index in range(len(month)):
-                try:
-                    dic = {'name': f"{month[index]}usage", 'value': f"{month_usage[index]}"}
-                    self.insert_expand_data(dic)
-                    dic = {'name': f"{month[index]}charge", 'value': f"{month_charge[index]}"}
-                    self.insert_expand_data(dic)
-                except Exception as e:
-                    logging.debug(f"The electricity consumption of {month[index]} failed to save to the database, which may already exist: {str(e)}")
+            if date: 
+                for index in range(len(date)):
+                    dic = {'date': date[index], 'usage': float(usages[index])}
+                    # 插入到数据库
+                    try:
+                        self.insert_data(dic)
+                        logging.info(f"The electricity consumption of {usages[index]}KWh on {date[index]} has been successfully deposited into the database")
+                    except Exception as e:
+                        logging.debug(f"The electricity consumption of {date[index]} failed to save to the database, which may already exist: {str(e)}")
+            if month: 
+                for index in range(len(month)):
+                    try:
+                        dic = {'name': f"{month[index]}usage", 'value': f"{month_usage[index]}"}
+                        self.insert_expand_data(dic)
+                        dic = {'name': f"{month[index]}charge", 'value': f"{month_charge[index]}"}
+                        self.insert_expand_data(dic)
+                    except Exception as e:
+                        logging.debug(f"The electricity consumption of {month[index]} failed to save to the database, which may already exist: {str(e)}")
             if month_charge:
                 month_charge = month_charge[-1]
             else:

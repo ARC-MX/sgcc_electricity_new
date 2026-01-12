@@ -1,5 +1,5 @@
 name: "SGCC Electricity"
-version: "v1.6.8-test2"
+version: "v1.6.9"
 slug: "sgcc_electricity"
 description: "获取国网电费数据的插件"
 url: "https://github.com/ARC-MX/sgcc_electricity_new"
@@ -15,7 +15,8 @@ map:
   # - addons:rw
   - config:rw
   # - media:rw
-  # - share:rw
+  - type: data
+    read_only: False
 options:
   PHONE_NUMBER: ""
   PASSWORD: ""  
