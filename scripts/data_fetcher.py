@@ -353,7 +353,7 @@ class DataFetcher:
                 else:
                     logging.info(f"The user {user_id} data fetching failed, {e}")
                     logging.info("Webdriver quit after fetching data successfully.")
-                continue    
+                continue
 
         driver.quit()
 
@@ -551,8 +551,10 @@ class DataFetcher:
             WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(EC.visibility_of(target))
             month_element = driver.find_element(By.XPATH, "//*[@id='pane-first']/div[1]/div[2]/div[2]/div/div[3]/table/tbody").text
             month_element = month_element.split("\n")
-            month_element.remove("MAX")
-            month_element = np.array(month_element[:-(len(month_element) % 3)]).reshape(-1, 3)
+            month_element = [x for x in month_element if x != "MAX"]
+            if len(month_element) % 3 != 0:
+                month_element = month_element[:-(len(month_element) % 3)]
+            month_element = np.array(month_element).reshape(-1, 3)
             # 将每月的用电量保存为List
             month = []
             usage = []
