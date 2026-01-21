@@ -7,6 +7,7 @@ import schedule
 import json
 import random
 from error_watcher import ErrorWatcher
+from sensor_updator import SensorUpdator
 from datetime import datetime,timedelta
 from const import *
 from data_fetcher import DataFetcher
@@ -71,6 +72,7 @@ def main():
     ErrorWatcher.init(root_dir='/data/errors')
     logging.info(f'ErrorWatcher init done!')
     fetcher = DataFetcher(PHONE_NUMBER, PASSWORD)
+    updator = SensorUpdator()
 
     # 生成随机延迟时间（-10分钟到+10分钟）
     random_delay_minutes = random.randint(-10, 10)
@@ -83,8 +85,18 @@ def main():
     logging.info(f'Run job now! The next run will be at {parsed_time.strftime("%H:%M")} and {next_run_time.strftime("%H:%M")} every day')
     schedule.every().day.at(parsed_time.strftime("%H:%M")).do(run_task, fetcher)
     schedule.every().day.at(next_run_time.strftime("%H:%M")).do(run_task, fetcher)
-    run_task(fetcher)
-
+    
+    # 每5分钟重发一次数据，防止HA重启后数据丢失
+    schedule.every(5).minutes.do(updator.republish)
+    
+    # 启动时先尝试从缓存恢复
+    # 如果缓存恢复成功，则跳过本次启动时的实时抓取，避免频繁重启导致账号被封
+    if not updator.republish():
+        logging.info("No valid cache found, fetching data from State Grid...")
+        run_task(fetcher)
+    else:
+        logging.info("Data restored from cache, skipping startup fetch to protect account.")
+    
     while True:
         schedule.run_pending()
         time.sleep(1)
