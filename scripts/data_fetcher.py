@@ -472,13 +472,34 @@ class DataFetcher:
 
     def _get_electric_balance(self, driver):
         try:
-            balance = driver.find_element(By.CLASS_NAME, "num").text
-            balance_text = driver.find_element(By.CLASS_NAME, "amttxt").text
-            if "欠费" in balance_text :
-                return -float(balance)
+            # Update selector based on user screenshot: 
+            # Structure: div.acccount -> div.content -> p (text: 您的账户余额为：) -> b (text: 25.84元)
+            # XPath finds the 'b' tag inside a paragraph containing the specific text
+            balance_element = driver.find_element(By.XPATH, "//div[contains(@class, 'acccount')]//p[contains(., '您的账户余额为')]/b")
+            balance_text = balance_element.text
+            
+            # Remove unit if present
+            balance_text = balance_text.replace("元", "").strip()
+            
+            # Check for '欠费' status - usually might be in the parent text or context
+            # Since the new UI structure for 'arrears' is not fully known, we check the parent text as well
+            parent_text = balance_element.find_element(By.XPATH, "..").text
+            
+            balance = float(balance_text)
+            
+            if "欠费" in parent_text:
+                return -balance
             else:
-                return float(balance)
-        except:
+                return balance
+
+        except Exception as e:
+            logging.error(f"Failed to get balance: {e}")
+            try:
+                with open("error_page_source.html", "w", encoding="utf-8") as f:
+                    f.write(driver.page_source)
+                logging.info("Current page source saved to error_page_source.html for debugging.")
+            except Exception as save_err:
+                logging.error(f"Failed to save page source: {save_err}")
             return None
 
     def _get_yearly_data(self, driver):
