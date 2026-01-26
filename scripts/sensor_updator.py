@@ -1,10 +1,9 @@
+import json
 import logging
 import os
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta
 
 import requests
-from sympy import true
-
 from const import *
 
 
@@ -17,10 +16,12 @@ class SensorUpdator:
         self.token = HASS_TOKEN
         self.RECHARGE_NOTIFY = os.getenv("RECHARGE_NOTIFY", "false").lower() == "true"
 
-    def update_one_userid(self, user_id: str, balance: float, last_daily_date: str, last_daily_usage: float, yearly_charge: float, yearly_usage: float, month_charge: float, month_usage: float):
+    def update_one_userid(self, user_id: str, balance: float, last_daily_date: str, last_daily_usage: float, yearly_charge: float, yearly_usage: float, month_charge: float, month_usage: float, notify=True):
+        self._save_to_cache(user_id, balance, last_daily_date, last_daily_usage, yearly_charge, yearly_usage, month_charge, month_usage)
         postfix = f"_{user_id[-4:]}"
         if balance is not None:
-            self.balance_notify(user_id, balance)
+            if notify:
+                self.balance_notify(user_id, balance)
             self.update_balance(postfix, balance)
         if last_daily_usage is not None:
             self.update_last_daily_usage(postfix, last_daily_date, last_daily_usage)
@@ -34,6 +35,58 @@ class SensorUpdator:
             self.update_month_data(postfix, month_charge)
 
         logging.info(f"User {user_id} state-refresh task run successfully!")
+
+    def _get_cache_file(self):
+        if os.path.isdir('/data'):
+            return '/data/sgcc_cache.json'
+        return 'sgcc_cache.json'
+
+    def _save_to_cache(self, user_id, balance, last_daily_date, last_daily_usage, yearly_charge, yearly_usage, month_charge, month_usage):
+        cache_file = self._get_cache_file()
+        data = {}
+        try:
+            if os.path.exists(cache_file):
+                with open(cache_file, 'r') as f:
+                    data = json.load(f)
+        except Exception as e:
+            logging.warning(f"Failed to load cache file: {e}")
+
+        data[user_id] = {
+            "balance": balance,
+            "last_daily_date": last_daily_date,
+            "last_daily_usage": last_daily_usage,
+            "yearly_charge": yearly_charge,
+            "yearly_usage": yearly_usage,
+            "month_charge": month_charge,
+            "month_usage": month_usage,
+            "timestamp": datetime.now().isoformat()
+        }
+
+        try:
+            with open(cache_file, 'w') as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            logging.error(f"Failed to save cache file: {e}")
+
+    def republish(self):
+        cache_file = self._get_cache_file()
+        if not os.path.exists(cache_file):
+            logging.info("No cache file found, skipping republish.")
+            return False
+
+        try:
+            with open(cache_file, 'r') as f:
+                data = json.load(f)
+            
+            for user_id, values in data.items():
+                logging.info(f"Republishing data for user {user_id} from cache.")
+                # Filter out 'timestamp' from values before passing to update_one_userid
+                clean_values = {k: v for k, v in values.items() if k != 'timestamp'}
+                self.update_one_userid(user_id, **clean_values, notify=False)
+            return True
+        except Exception as e:
+            logging.error(f"Failed to republish data: {e}")
+            return False
 
     def update_last_daily_usage(self, postfix: str, last_daily_date: str, sensorState: float):
         sensorName = DAILY_USAGE_SENSOR_NAME + postfix
