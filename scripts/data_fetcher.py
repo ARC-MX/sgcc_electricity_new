@@ -287,9 +287,6 @@ class DataFetcher:
                     return True
             logging.error(f"Login failed, maybe caused by Sliding CAPTCHA recognition failed")
         return False
-
-        raise Exception(
-            "Login failed, maybe caused by 1.incorrect phone_number and password, please double check. or 2. network, please mnodify LOGIN_EXPECTED_TIME in .env and run docker compose up --build.")
         
     def fetch(self):
 
@@ -375,7 +372,7 @@ class DataFetcher:
     def _get_all_data(self, driver, user_id, userid_index):
         balance = self._get_electric_balance(driver)
         if (balance is None):
-            logging.info(f"Get electricity charge balance for {user_id} failed, Pass.")
+            logging.error(f"Get electricity charge balance for {user_id} failed, Pass.")
         else:
             logging.info(
                 f"Get electricity charge balance for {user_id} successfully, balance is {balance} CNY.")
@@ -472,34 +469,23 @@ class DataFetcher:
 
     def _get_electric_balance(self, driver):
         try:
-            # Update selector based on user screenshot: 
-            # Structure: div.acccount -> div.content -> p (text: 您的账户余额为：) -> b (text: 25.84元)
-            # XPath finds the 'b' tag inside a paragraph containing the specific text
-            balance_element = driver.find_element(By.XPATH, "//div[contains(@class, 'acccount')]//p[contains(., '您的账户余额为')]/b")
-            balance_text = balance_element.text
-            
-            # Remove unit if present
-            balance_text = balance_text.replace("元", "").strip()
-            
-            # Check for '欠费' status - usually might be in the parent text or context
-            # Since the new UI structure for 'arrears' is not fully known, we check the parent text as well
-            parent_text = balance_element.find_element(By.XPATH, "..").text
-            
-            balance = float(balance_text)
-            
-            if "欠费" in parent_text:
-                return -balance
-            else:
-                return balance
-
+            try:
+                balance_text = driver.find_element(By.CLASS_NAME, "num").text
+                # 定位是否有“应交金额”标题（确认是后缴费账户）
+                title_text = driver.find_element(By.XPATH, "//p[contains(@class, 'balance_title') and contains(text(), '应交金额')]").text
+                if "应交金额" in title_text:
+                    # 后缴费账户：应交金额是欠款，返回负数
+                    return -float(balance_text)
+            except:
+                # 2. 若没找到，尝试定位“预缴费账户”的“账户余额”（原逻辑）
+                balance_text = driver.find_element(By.CLASS_NAME, "cff8").text
+                balance = balance_text.replace("元", "")
+                if "欠费" in balance_text:
+                    return -float(balance)
+                else:
+                    return float(balance)
         except Exception as e:
             logging.error(f"Failed to get balance: {e}")
-            try:
-                with open("error_page_source.html", "w", encoding="utf-8") as f:
-                    f.write(driver.page_source)
-                logging.info("Current page source saved to error_page_source.html for debugging.")
-            except Exception as save_err:
-                logging.error(f"Failed to save page source: {save_err}")
             return None
 
     def _get_yearly_data(self, driver):

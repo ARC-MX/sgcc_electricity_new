@@ -21,6 +21,49 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        persist-credentials: true  # 新增：保留凭证，用于后续推送代码
+        fetch-depth: 0             # 新增：拉取完整历史，避免提交失败
+
+    # 新增步骤1：修改config.yaml中的版本号
+    - name: Update version in config.yaml
+      run: |
+        # 获取输入的版本号（支持带/不带v前缀，自动补全）
+        INPUT_VERSION="${{ inputs.version }}"
+        # 若输入的版本号不带v前缀，自动添加（保持和原有格式一致）
+        if [[ $INPUT_VERSION != v* ]]; then
+          NEW_VERSION="v${INPUT_VERSION}"
+        else
+          NEW_VERSION="$INPUT_VERSION"
+        fi
+        
+        # 精准匹配config.yaml中带引号的version字段（如version: "v1.6.9"）
+        sed -i "s/^version: \".*\"/version: \"$NEW_VERSION\"/" config.yaml
+        
+        # 验证修改结果
+        echo "===== config.yaml版本修改结果 ====="
+        cat config.yaml | grep "version"
+        
+
+    # 修复后的提交推送步骤
+    - name: Commit and push config.yaml changes
+      run: |
+        git config --global user.name "GitHub Actions"
+        git config --global user.email "actions@github.com"
+                
+        # 暂存修改并检查
+        git add config.yaml
+        if git diff --cached --quiet config.yaml; then
+          echo "config.yaml无版本变更，跳过提交"
+        else
+          git commit -m "chore: update config.yaml version to ${{ inputs.version }}"
+          # 强制推送，适配分支保护规则
+          git push origin HEAD:master --force-with-lease
+          echo "成功提交config.yaml版本变更至master分支"
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GIT_TERMINAL_PROMPT: 0
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1

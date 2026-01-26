@@ -86,6 +86,7 @@ def main():
     schedule.every().day.at(parsed_time.strftime("%H:%M")).do(run_task, fetcher)
     schedule.every().day.at(next_run_time.strftime("%H:%M")).do(run_task, fetcher)
     
+    run_task(fetcher)
     # 每5分钟重发一次数据，防止HA重启后数据丢失
     schedule.every(5).minutes.do(updator.republish)
     
