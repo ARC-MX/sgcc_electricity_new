@@ -205,7 +205,7 @@ template:
       - name: electricity_charge_balance_xxxx
         unique_id: electricity_charge_balance_xxxx
         state: "{{ states('sensor.electricity_charge_balance_xxxx') }}"
-        state_class: total
+        state_class: measurement
         unit_of_measurement: "CNY"
         device_class: monetary
 
