@@ -43,6 +43,7 @@ class SensorUpdator:
 
     def _save_to_cache(self, user_id, balance, last_daily_date, last_daily_usage, yearly_charge, yearly_usage, month_charge, month_usage):
         cache_file = self._get_cache_file()
+        abs_cache_file = os.path.abspath(cache_file)
         data = {}
         try:
             if os.path.exists(cache_file):
@@ -65,19 +66,26 @@ class SensorUpdator:
         try:
             with open(cache_file, 'w') as f:
                 json.dump(data, f, indent=2)
+            logging.debug(f"Saved data to cache file: {abs_cache_file}")
         except Exception as e:
-            logging.error(f"Failed to save cache file: {e}")
+            logging.error(f"Failed to save cache file {abs_cache_file}: {e}")
 
     def republish(self):
         cache_file = self._get_cache_file()
+        abs_cache_file = os.path.abspath(cache_file)
         if not os.path.exists(cache_file):
-            logging.info("No cache file found, skipping republish.")
+            logging.info(f"No cache file found at {abs_cache_file}, skipping republish.")
             return False
 
+        data = {}
         try:
             with open(cache_file, 'r') as f:
                 data = json.load(f)
+        except Exception as e:
+            logging.error(f"Failed to load cache file {abs_cache_file}: {e}")
+            return False
             
+        try:
             for user_id, values in data.items():
                 logging.info(f"Republishing data for user {user_id} from cache.")
                 # Filter out 'timestamp' from values before passing to update_one_userid
@@ -88,8 +96,57 @@ class SensorUpdator:
             logging.error(f"Failed to republish data: {e}")
             return False
 
+    def get_sensor_state(self, sensor_name):
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + self.token,
+        }
+        url = self.base_url + API_PATH + sensor_name
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                return response.json()
+            return None
+        except Exception as e:
+            logging.warning(f"Failed to get sensor state for {sensor_name}: {e}")
+            return None
+
+    def should_update(self, sensor_name, new_state, check_attributes=None):
+        current_state_obj = self.get_sensor_state(sensor_name)
+        if not current_state_obj:
+            return True
+            
+        # Check state
+        try:
+            current_state = current_state_obj.get('state')
+            if current_state in ['unknown', 'unavailable', None]:
+                return True
+            
+            curr_val = float(current_state)
+            new_val = float(new_state)
+            if abs(curr_val - new_val) > 0.001:
+                return True
+        except (ValueError, TypeError):
+            # If we can't compare as floats, assume they are different
+            return True
+            
+        # Check attributes if requested
+        if check_attributes:
+            curr_attrs = current_state_obj.get('attributes', {})
+            for k, v in check_attributes.items():
+                # Convert both to string for comparison to avoid type mismatches
+                if str(curr_attrs.get(k)) != str(v):
+                    return True
+                    
+        return False
+
     def update_last_daily_usage(self, postfix: str, last_daily_date: str, sensorState: float):
         sensorName = DAILY_USAGE_SENSOR_NAME + postfix
+        
+        if not self.should_update(sensorName, sensorState, {"last_reset": last_daily_date}):
+             logging.info(f"Skipping update for {sensorName}, state matches.")
+             return
+
         request_body = {
             "state": sensorState,
             "unique_id": sensorName,
@@ -107,6 +164,13 @@ class SensorUpdator:
 
     def update_balance(self, postfix: str, sensorState: float):
         sensorName = BALANCE_SENSOR_NAME + postfix
+        
+        # Balance updates normally have a volatile last_reset (current time), 
+        # but if the balance itself hasn't changed, we can skip updating.
+        if not self.should_update(sensorName, sensorState):
+             logging.info(f"Skipping update for {sensorName}, state matches.")
+             return
+
         last_reset = datetime.now().strftime("%Y-%m-%d, %H:%M:%S")
         request_body = {
             "state": sensorState,
@@ -133,6 +197,11 @@ class SensorUpdator:
         first_day_of_current_month = current_date.replace(day=1)
         last_day_of_previous_month = first_day_of_current_month - timedelta(days=1)
         last_reset = last_day_of_previous_month.strftime("%Y-%m")
+        
+        if not self.should_update(sensorName, sensorState, {"last_reset": last_reset}):
+             logging.info(f"Skipping update for {sensorName}, state matches.")
+             return
+
         request_body = {
             "state": sensorState,
             "unique_id": sensorName,
@@ -159,6 +228,11 @@ class SensorUpdator:
             last_reset = datetime.now().replace(year=last_year).strftime("%Y")
         else:
             last_reset = datetime.now().strftime("%Y")
+            
+        if not self.should_update(sensorName, sensorState, {"last_reset": last_reset}):
+             logging.info(f"Skipping update for {sensorName}, state matches.")
+             return
+             
         request_body = {
             "state": sensorState,
             "unique_id": sensorName,
