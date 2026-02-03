@@ -37,7 +37,7 @@ class SensorUpdator:
         logging.info(f"User {user_id} state-refresh task run successfully!")
 
     def _get_cache_file(self):
-        if os.path.isdir('/data'):
+        if 'PYTHON_IN_DOCKER' in os.environ: 
             return '/data/sgcc_cache.json'
         return 'sgcc_cache.json'
 
@@ -254,7 +254,7 @@ class SensorUpdator:
         }
         url = self.base_url + API_PATH + sensorName  # /api/states/<entity_id>
         try:
-            response = requests.post(url, json=request_body, headers=headers)
+            response = requests.post(url, verify=False, json=request_body, headers=headers)
             logging.debug(
                 f"Homeassistant REST API invoke, POST on {url}. response[{response.status_code}]: {response.content}"
             )
