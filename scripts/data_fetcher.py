@@ -470,20 +470,27 @@ class DataFetcher:
     def _get_electric_balance(self, driver):
         try:
             try:
-                balance_text = driver.find_element(By.CLASS_NAME, "num").text
-                # 定位是否有“应交金额”标题（确认是后缴费账户）
+                # 定位是否有"应交金额"标题（确认是后缴费账户）
                 title_text = driver.find_element(By.XPATH, "//p[contains(@class, 'balance_title') and contains(text(), '应交金额')]").text
                 if "应交金额" in title_text:
-                    # 后缴费账户：应交金额是欠款，返回负数
-                    return -float(balance_text)
-            except:
-                # 2. 若没找到，尝试定位“预缴费账户”的“账户余额”（原逻辑）
-                balance_text = driver.find_element(By.CLASS_NAME, "cff8").text
-                balance = balance_text.replace("元", "")
-                if "欠费" in balance_text:
-                    return -float(balance)
-                else:
-                    return float(balance)
+                    # 后缴费账户：需要查找"账户余额"，而不是"应交金额"
+                    # 查找包含"账户余额"的balance_title元素，然后获取其内部的金额
+                    balance_content = driver.find_element(By.XPATH, "//p[contains(@class, 'balance_title') and contains(text(), '账户余额')]")
+                    # 提取数字部分
+                    balance_text = re.sub(r'[^\d.]', '', balance_content.text)
+                    if balance_text:
+                        return float(balance_text)
+            except Exception as e:
+                # 后缴费账户解析失败，继续尝试预缴费账户逻辑
+                pass
+
+            # 2. 预缴费账户的"账户余额"（原逻辑）
+            balance_text = driver.find_element(By.CLASS_NAME, "cff8").text
+            balance = balance_text.replace("元", "")
+            if "欠费" in balance_text:
+                return -float(balance)
+            else:
+                return float(balance)
         except Exception as e:
             logging.error(f"Failed to get balance: {e}")
             return None
