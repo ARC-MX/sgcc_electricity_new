@@ -2,8 +2,8 @@ services:
   sgcc_electricity_app:
     env_file:
       - .env
-    # image: registry.cn-hangzhou.aliyuncs.com/arcw/sgcc_electricity:latest # for use docker.io: arcw/sgcc_electricity:latest
-    image: sgcc_electricity_test      # for local test
+    image: registry.cn-hangzhou.aliyuncs.com/arcw/sgcc_electricity:latest # for use docker.io: arcw/sgcc_electricity:latest
+    # image: sgcc_electricity_test      # for local test
     container_name: sgcc_electricity
     network_mode: "host"
     environment:

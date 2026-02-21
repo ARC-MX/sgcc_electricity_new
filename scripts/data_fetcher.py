@@ -201,9 +201,16 @@ class DataFetcher:
             "user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
             "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
 
+        # 指定 chromium 和 chromedriver 的路径
+        if 'PYTHON_IN_DOCKER' in os.environ:
+            chrome_options.binary_location = "/usr/bin/chromium"
+            service = ChromeService(executable_path="/usr/bin/chromedriver")
+        else:
+            service = ChromeService()
+
         driver = webdriver.Chrome(
             options=chrome_options,
-            service=ChromeService(),
+            service=service,
         )
         driver.implicitly_wait(self.DRIVER_IMPLICITY_WAIT_TIME)
         return driver
