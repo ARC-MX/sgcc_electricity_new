@@ -10,10 +10,7 @@ import sqlite3
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver import ActionChains
-from selenium.webdriver.edge.service import Service as EdgeService
-from webdriver_manager.microsoft import EdgeChromiumDriverManager
-from selenium.webdriver.firefox.service import Service as FirefoxService
-from webdriver_manager.firefox import GeckoDriverManager
+from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
@@ -27,7 +24,6 @@ import numpy as np
 from io import BytesIO
 from PIL import Image
 from onnx import ONNX
-import platform
 
 
 def base64_to_PLI(base64_str: str):
@@ -190,22 +186,33 @@ class DataFetcher:
             logging.debug(f"Data update failed: {e}")
                 
     def _get_webdriver(self):
-        if platform.system() == 'Windows':
-            driver = webdriver.Edge(service=EdgeService(EdgeChromiumDriverManager(
-            url="https://msedgedriver.microsoft.com/",
-            latest_release_url="https://msedgedriver.microsoft.com/LATEST_RELEASE").install()))
+        chrome_options = webdriver.ChromeOptions()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--start-maximized")
+
+        # --- 规避反爬 ---
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        chrome_options.add_experimental_option("useAutomationExtension", False)
+        chrome_options.add_argument(
+            "user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+
+        # 指定 chromium 和 chromedriver 的路径
+        if 'PYTHON_IN_DOCKER' in os.environ:
+            chrome_options.binary_location = "/usr/bin/chromium"
+            service = ChromeService(executable_path="/usr/bin/chromedriver")
         else:
-            firefox_options = webdriver.FirefoxOptions()
-            firefox_options.add_argument('--incognito')
-            firefox_options.add_argument("--start-maximized")
-            firefox_options.add_argument('--headless')
-            firefox_options.add_argument('--no-sandbox')
-            firefox_options.add_argument('--disable-gpu')
-            firefox_options.add_argument('--disable-dev-shm-usage')
-            logging.info(f"Open Firefox.\r")
-            driver = webdriver.Firefox(options=firefox_options, service=FirefoxService("/usr/bin/geckodriver"))
-            driver.implicitly_wait(self.DRIVER_IMPLICITY_WAIT_TIME)
-            # driver.implicitly_wait(self.DRIVER_IMPLICITY_WAIT_TIME)
+            service = ChromeService()
+
+        driver = webdriver.Chrome(
+            options=chrome_options,
+            service=service,
+        )
+        driver.implicitly_wait(self.DRIVER_IMPLICITY_WAIT_TIME)
         return driver
 
     @ErrorWatcher.watch
@@ -218,11 +225,17 @@ class DataFetcher:
         logging.info(f"Open LOGIN_URL:{LOGIN_URL}.\r")
         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
         # swtich to username-password login page
-        WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(
-            EC.invisibility_of_element_located((By.CLASS_NAME, 'el-loading-mask')))
+        # 临时关闭隐式等待，避免与 WebDriverWait 叠加导致超时
+        driver.implicitly_wait(0)
+        try:
+            WebDriverWait(driver, 10).until(
+                EC.invisibility_of_element_located((By.CLASS_NAME, 'el-loading-mask')))
+        finally:
+            driver.implicitly_wait(self.DRIVER_IMPLICITY_WAIT_TIME)  # 恢复隐式等待
+
         element = WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(
             EC.presence_of_element_located((By.CLASS_NAME, 'user')))
-        element.click()
+        driver.execute_script("arguments[0].click();", element)
         logging.info("find_element 'user'.\r")
         self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[1]/div[1]/div[2]/span')
         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
@@ -260,7 +273,8 @@ class DataFetcher:
             # sometimes ddddOCR may fail, so add retry logic)
             for retry_times in range(1, self.RETRY_TIMES_LIMIT + 1):
                 
-                self._click_button(driver, By.XPATH, '//*[@id="login_box"]/div[1]/div[1]/div[2]/span')
+                el = driver.find_element(By.XPATH, '//*[@id="login_box"]/div[1]/div[1]/div[2]/span')
+                driver.execute_script("arguments[0].click();", el)
                 #get canvas image
                 background_JS = 'return document.getElementById("slideVerify").childNodes[0].toDataURL("image/png");'
                 # targe_JS = 'return document.getElementsByClassName("slide-verify-block")[0].toDataURL("image/png");'
