@@ -4,5 +4,7 @@ schedule==1.2.1
 Pillow==10.1.0
 onnxruntime==1.18.1
 numpy==1.26.2
+webdrivermanager_cn==2.4.0
+webdriver-manager==4.0.2
 # python-dotenv
 # python-dateutil

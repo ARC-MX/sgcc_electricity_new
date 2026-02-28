@@ -10,6 +10,8 @@ import sqlite3
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver import ActionChains
+from selenium.webdriver.edge.service import Service as EdgeService
+from webdriver_manager.microsoft import EdgeChromiumDriverManager
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -24,6 +26,7 @@ import numpy as np
 from io import BytesIO
 from PIL import Image
 from onnx import ONNX
+import platform
 
 
 def base64_to_PLI(base64_str: str):
@@ -186,33 +189,38 @@ class DataFetcher:
             logging.debug(f"Data update failed: {e}")
                 
     def _get_webdriver(self):
-        chrome_options = webdriver.ChromeOptions()
-        chrome_options.add_argument("--headless=new")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_argument("--start-maximized")
-
-        # --- 规避反爬 ---
-        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        chrome_options.add_experimental_option("useAutomationExtension", False)
-        chrome_options.add_argument(
-            "user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-            "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
-
-        # 指定 chromium 和 chromedriver 的路径
-        if 'PYTHON_IN_DOCKER' in os.environ:
-            chrome_options.binary_location = "/usr/bin/chromium"
-            service = ChromeService(executable_path="/usr/bin/chromedriver")
+        if platform.system() == 'Windows':
+            driver = webdriver.Edge(service=EdgeService(EdgeChromiumDriverManager(
+            url="https://msedgedriver.microsoft.com/",
+            latest_release_url="https://msedgedriver.microsoft.com/LATEST_RELEASE").install()))
         else:
-            service = ChromeService()
+            chrome_options = webdriver.ChromeOptions()
+            chrome_options.add_argument("--headless=new")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--disable-dev-shm-usage")
+            chrome_options.add_argument("--start-maximized")
 
-        driver = webdriver.Chrome(
-            options=chrome_options,
-            service=service,
-        )
-        driver.implicitly_wait(self.DRIVER_IMPLICITY_WAIT_TIME)
+            # --- 规避反爬 ---
+            chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+            chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+            chrome_options.add_experimental_option("useAutomationExtension", False)
+            chrome_options.add_argument(
+                "user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+
+            # 指定 chromium 和 chromedriver 的路径
+            if 'PYTHON_IN_DOCKER' in os.environ:
+                chrome_options.binary_location = "/usr/bin/chromium"
+                service = ChromeService(executable_path="/usr/bin/chromedriver")
+            else:
+                service = ChromeService()
+
+            driver = webdriver.Chrome(
+                options=chrome_options,
+                service=service,
+            )
+            driver.implicitly_wait(self.DRIVER_IMPLICITY_WAIT_TIME)
         return driver
 
     @ErrorWatcher.watch
