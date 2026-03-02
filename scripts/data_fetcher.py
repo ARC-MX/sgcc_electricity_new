@@ -118,17 +118,37 @@ class DataFetcher:
                 return False
         return True
 
-    # @staticmethod 
-    def _sliding_track(self, driver, distance):# 机器模拟人工滑动轨迹
-        # 获取按钮
+    def _sliding_track(self, driver, distance):
+        """Human-like sliding: accelerate → cruise → decelerate → micro-rebound."""
         slider = driver.find_element(By.CLASS_NAME, "slide-verify-slider-mask-item")
         ActionChains(driver).click_and_hold(slider).perform()
-        # 获取轨迹
-        # tracks = _get_tracks(distance)
-        # for t in tracks:
-        yoffset_random = random.uniform(-2, 4)
-        ActionChains(driver).move_by_offset(xoffset=distance, yoffset=yoffset_random).perform()
-            # time.sleep(0.2)
+
+        moved = 0
+        accel_end = distance * 0.4
+        cruise_end = distance * 0.8
+
+        while moved < distance:
+            remaining = distance - moved
+            if moved < accel_end:
+                step = random.randint(8, 16)
+                delay = random.uniform(0.005, 0.02)
+            elif moved < cruise_end:
+                step = random.randint(4, 10)
+                delay = random.uniform(0.01, 0.03)
+            else:
+                step = random.randint(1, 4)
+                delay = random.uniform(0.02, 0.06)
+
+            step = min(step, remaining)
+            y_jitter = random.uniform(-1, 1)
+            ActionChains(driver).move_by_offset(xoffset=step, yoffset=y_jitter).perform()
+            moved += step
+            time.sleep(delay)
+
+        # micro-rebound before releasing
+        rebound = random.randint(1, 3)
+        ActionChains(driver).move_by_offset(xoffset=-rebound, yoffset=0).perform()
+        time.sleep(random.uniform(0.05, 0.15))
         ActionChains(driver).release().perform()
 
     def connect_user_db(self, user_id):
@@ -292,9 +312,15 @@ class DataFetcher:
                 background_image = base64_to_PLI(background)
                 logging.info(f"Get electricity canvas image successfully.\r")
                 distance = self.onnx.get_distance(background_image)
-                logging.info(f"Image CaptCHA distance is {distance}.\r")
+                # ONNX model detects on 416x416 space; scale to actual canvas width
+                canvas_width = driver.execute_script(
+                    'return document.getElementById("slideVerify").childNodes[0].width;'
+                )
+                scale = canvas_width / 416.0
+                scaled_distance = round(distance * scale)
+                logging.info(f"CAPTCHA distance={distance}, canvas_width={canvas_width}, scale={scale:.3f}, scaled={scaled_distance}\r")
 
-                self._sliding_track(driver, round(distance*1.06)) #1.06是补偿
+                self._sliding_track(driver, scaled_distance)
                 time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
                 if (driver.current_url == LOGIN_URL): # if login not success
                     try:
