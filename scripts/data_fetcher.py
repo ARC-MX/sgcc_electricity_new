@@ -1,12 +1,10 @@
 import logging
 import os
 import re
-import subprocess
 import time
 
 import random
 import base64
-import sqlite3
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver import ActionChains
@@ -91,13 +89,26 @@ class DataFetcher:
         self._password = password
         self.onnx = ONNX("./captcha.onnx")
 
-        # 获取 ENABLE_DATABASE_STORAGE 的值，默认为 False
-        self.enable_database_storage = os.getenv("ENABLE_DATABASE_STORAGE", "false").lower() == "true"
         self.DRIVER_IMPLICITY_WAIT_TIME = int(os.getenv("DRIVER_IMPLICITY_WAIT_TIME", 60))
         self.RETRY_TIMES_LIMIT = int(os.getenv("RETRY_TIMES_LIMIT", 5))
         self.LOGIN_EXPECTED_TIME = int(os.getenv("LOGIN_EXPECTED_TIME", 10))
         self.RETRY_WAIT_TIME_OFFSET_UNIT = int(os.getenv("RETRY_WAIT_TIME_OFFSET_UNIT", 10))
         self.IGNORE_USER_ID = os.getenv("IGNORE_USER_ID", "xxxxx,xxxxx").split(",")
+        self._init_db()
+    
+    def _init_db(self):
+        self.db_type = os.getenv("DB_TYPE", "None").lower()
+        if self.db_type == 'mysql':
+            from db import MysqlDB
+            self.db = MysqlDB()
+            logging.info("Using MySQL database to store data.")
+        elif self.db_type == 'sqlite':
+            from db import SqliteDB
+            self.db = SqliteDB()
+            logging.info("Using Sqlite database to store data.")
+        else:
+            self.db = None
+            logging.info("No database will be used to store data.")
 
     # @staticmethod
     def _click_button(self, driver, button_search_type, button_search_key):
@@ -151,62 +162,8 @@ class DataFetcher:
         time.sleep(random.uniform(0.05, 0.15))
         ActionChains(driver).release().perform()
 
-    def connect_user_db(self, user_id):
-        """创建数据库集合，db_name = electricity_daily_usage_{user_id}
-        :param user_id: 用户ID"""
-        try:
-            # 创建数据库
-            DB_NAME = os.getenv("DB_NAME", "homeassistant.db")
-            if 'PYTHON_IN_DOCKER' in os.environ: 
-                DB_NAME = "/data/" + DB_NAME
-            self.connect = sqlite3.connect(DB_NAME)
-            self.connect.cursor()
-            logging.info(f"Database of {DB_NAME} created successfully.")
-            # 创建表名
-            self.table_name = f"daily{user_id}"
-            sql = f'''CREATE TABLE IF NOT EXISTS {self.table_name} (
-                    date DATE PRIMARY KEY NOT NULL, 
-                    usage REAL NOT NULL)'''
-            self.connect.execute(sql)
-            logging.info(f"Table {self.table_name} created successfully")
-			
-			# 创建data表名
-            self.table_expand_name = f"data{user_id}"
-            sql = f'''CREATE TABLE IF NOT EXISTS {self.table_expand_name} (
-                    name TEXT PRIMARY KEY NOT NULL,
-                    value TEXT NOT NULL)'''
-            self.connect.execute(sql)
-            logging.info(f"Table {self.table_expand_name} created successfully")
-			
-        # 如果表已存在，则不会创建
-        except sqlite3.Error as e:
-            logging.debug(f"Create db or Table error:{e}")
-            return False
-        return True
-
-    def insert_data(self, data:dict):
-        if self.connect is None:
-            logging.error("Database connection is not established.")
-            return
-        # 创建索引
-        try:
-            sql = f"INSERT OR REPLACE INTO {self.table_name} VALUES(strftime('%Y-%m-%d','{data['date']}'),{data['usage']});"
-            self.connect.execute(sql)
-            self.connect.commit()
-        except BaseException as e:
-            logging.debug(f"Data update failed: {e}")
-
     def insert_expand_data(self, data:dict):
-        if self.connect is None:
-            logging.error("Database connection is not established.")
-            return
-        # 创建索引
-        try:
-            sql = f"INSERT OR REPLACE INTO {self.table_expand_name} VALUES('{data['name']}','{data['value']}');"
-            self.connect.execute(sql)
-            self.connect.commit()
-        except BaseException as e:
-            logging.debug(f"Data update failed: {e}")
+        self.db.insert_expand_data(data)
                 
     def _get_webdriver(self):
         if platform.system() == 'Windows':
@@ -462,14 +419,14 @@ class DataFetcher:
             logging.error(f"Get month power usage for {user_id} failed, pass")
 
         # 新增储存用电量
-        if self.enable_database_storage:
+        if self.db is not None:
             # 将数据存储到数据库
-            logging.info("enable_database_storage is true, we will store the data to the database.")
+            logging.info(f"db is {self.db_type}, we will store the data to the database.")
             # 按天获取数据 7天/30天
             date, usages = self._get_daily_usage_data(driver)
             self._save_user_data(user_id, balance, last_daily_date, last_daily_usage, date, usages, month, month_usage, month_charge, yearly_charge, yearly_usage)
         else:
-            logging.info("enable_database_storage is false, we will not store the data to the database.")
+            logging.info("db is None, we will not store the data to the database.")
 
         
         if month_charge:
@@ -671,7 +628,7 @@ class DataFetcher:
 
     def _save_user_data(self, user_id, balance, last_daily_date, last_daily_usage, date, usages, month, month_usage, month_charge, yearly_charge, yearly_usage):
         # 连接数据库集合
-        if self.connect_user_db(user_id):
+        if self.db.connect_user_db(user_id):
             # 写入当前户号
             dic = {'name': 'user', 'value': f"{user_id}"}
             self.insert_expand_data(dic)
@@ -697,7 +654,7 @@ class DataFetcher:
                     dic = {'date': date[index], 'usage': float(usages[index])}
                     # 插入到数据库
                     try:
-                        self.insert_data(dic)
+                        self.db.insert_data(dic)
                         logging.info(f"The electricity consumption of {usages[index]}KWh on {date[index]} has been successfully deposited into the database")
                     except Exception as e:
                         logging.debug(f"The electricity consumption of {date[index]} failed to save to the database, which may already exist: {str(e)}")
@@ -705,9 +662,9 @@ class DataFetcher:
                 for index in range(len(month)):
                     try:
                         dic = {'name': f"{month[index]}usage", 'value': f"{month_usage[index]}"}
-                        self.insert_expand_data(dic)
+                        self.db.insert_expand_data(dic)
                         dic = {'name': f"{month[index]}charge", 'value': f"{month_charge[index]}"}
-                        self.insert_expand_data(dic)
+                        self.db.insert_expand_data(dic)
                     except Exception as e:
                         logging.debug(f"The electricity consumption of {month[index]} failed to save to the database, which may already exist: {str(e)}")
             if month_charge:
@@ -726,7 +683,7 @@ class DataFetcher:
             dic = {'name': f"month_charge", 'value': f"{month_charge}"}
             self.insert_expand_data(dic)
             # dic = {'date': month[index], 'usage': float(month_usage[index]), 'charge': float(month_charge[index])}
-            self.connect.close()
+            self.db.close_connect()
         else:
             logging.info("The database creation failed and the data was not written correctly.")
             return

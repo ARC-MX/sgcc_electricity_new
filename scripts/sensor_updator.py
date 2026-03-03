@@ -14,13 +14,25 @@ class SensorUpdator:
         HASS_TOKEN = os.getenv("HASS_TOKEN")
         self.base_url = HASS_URL[:-1] if HASS_URL.endswith("/") else HASS_URL
         self.token = HASS_TOKEN
-        self.RECHARGE_NOTIFY = os.getenv("RECHARGE_NOTIFY", "false").lower() == "true"
+        self._init_balance_notify()
+        
+    def _init_balance_notify(self):
+        push_type = os.getenv("PUSH_TYPE", "None").lower()
+        if push_type == "pushplus":
+            from notify import PushplusNotify
+            self.balance_notify = PushplusNotify()
+        elif push_type == "urlpush":
+            from notify import UrlPushNotify
+            self.balance_notify = UrlPushNotify()
+        else:
+            self.balance_notify = None
+        
 
     def update_one_userid(self, user_id: str, balance: float, last_daily_date: str, last_daily_usage: float, yearly_charge: float, yearly_usage: float, month_charge: float, month_usage: float, notify=True):
         self._save_to_cache(user_id, balance, last_daily_date, last_daily_usage, yearly_charge, yearly_usage, month_charge, month_usage)
         postfix = f"_{user_id[-4:]}"
         if balance is not None:
-            if notify:
+            if self.balance_notify is not None:
                 self.balance_notify(user_id, balance)
             self.update_balance(postfix, balance)
         if last_daily_usage is not None:
@@ -260,24 +272,3 @@ class SensorUpdator:
             )
         except Exception as e:
             logging.error(f"Homeassistant REST API invoke failed, reason is {e}")
-
-    def balance_notify(self, user_id, balance):
-
-        if self.RECHARGE_NOTIFY :
-            BALANCE = float(os.getenv("BALANCE", 10.0))
-            PUSHPLUS_TOKEN = os.getenv("PUSHPLUS_TOKEN").split(",")        
-            logging.info(f"Check the electricity bill balance. When the balance is less than {BALANCE} CNY, the notification will be sent = {self.RECHARGE_NOTIFY}")
-            if balance < BALANCE :
-                for token in PUSHPLUS_TOKEN:
-                    title = "电费余额不足提醒"
-                    content = (f"您用户号{user_id}的当前电费余额为：{balance}元，请及时充值。" )
-                    url = ("http://www.pushplus.plus/send?token="+ token+ "&title="+ title+ "&content="+ content)
-                    requests.get(url)
-                    logging.info(
-                        f"The current balance of user id {user_id} is {balance} CNY less than {BALANCE} CNY, notice has been sent, please pay attention to check and recharge."
-                    )
-        else :
-            logging.info(
-            f"Check the electricity bill balance, the notification will be sent = {self.RECHARGE_NOTIFY}")
-            return
-
