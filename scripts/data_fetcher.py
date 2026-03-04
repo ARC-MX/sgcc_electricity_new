@@ -16,6 +16,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 from sensor_updator import SensorUpdator
 from error_watcher import ErrorWatcher
+from typing import Optional
 
 from const import *
 
@@ -281,7 +282,13 @@ class DataFetcher:
                 time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
                 if (driver.current_url == LOGIN_URL): # if login not success
                     try:
-                        logging.info(f"Sliding CAPTCHA recognition failed and reloaded.\r")
+                        error = self._get_error_message(driver)
+                        if error:
+                            # 网络连接超时（RK001）,请重试！ 可能是登录次数过多导致
+                            logging.info(f"Sliding CAPTCHA recognition failed [{error}] and reloaded.\r")
+                        else:
+                            logging.info(f"Sliding CAPTCHA recognition failed and reloaded.\r")
+
                         self._click_button(driver, By.CLASS_NAME, "el-button.el-button--primary")
                         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
                         continue
@@ -292,6 +299,14 @@ class DataFetcher:
                     return True
             logging.error(f"Login failed, maybe caused by Sliding CAPTCHA recognition failed")
         return False
+
+    def _get_error_message(self, driver) -> Optional[str]:
+        """获取错误信息，如果不存在则返回 None"""
+        try:
+            element = driver.find_element(By.XPATH, "//div[@class='errmsg-tip']//span")
+            return element.text
+        except NoSuchElementException:
+            return None
         
     def fetch(self):
 
