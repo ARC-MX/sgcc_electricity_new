@@ -95,6 +95,8 @@ class DataFetcher:
         self.LOGIN_EXPECTED_TIME = int(os.getenv("LOGIN_EXPECTED_TIME", 10))
         self.RETRY_WAIT_TIME_OFFSET_UNIT = int(os.getenv("RETRY_WAIT_TIME_OFFSET_UNIT", 10))
         self.IGNORE_USER_ID = os.getenv("IGNORE_USER_ID", "xxxxx,xxxxx").split(",")
+        self.QR_CODE_LOGIN_WAIT_COUNT = int(os.getenv("QR_CODE_LOGIN_WAIT_COUNT", 7))
+        self.QR_CODE_LOGIN_WAIT_TIME_INTERVAL_UNIT = int(os.getenv("QR_CODE_LOGIN_WAIT_TIME_INTERVAL_UNIT", 10))
         self._init_db()
     
     def _init_db(self):
@@ -244,7 +246,8 @@ class DataFetcher:
             logging.info("Click login button.\r")
 
             return True
-        else :
+        # 增加判空校验便于测试fallback
+        elif self._password is not None and len(self._password) > 0:
             # input username and password
             input_elements = driver.find_elements(By.CLASS_NAME, "el-input__inner")
             input_elements[0].send_keys(self._username)
@@ -282,7 +285,7 @@ class DataFetcher:
                 time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
                 if (driver.current_url == LOGIN_URL): # if login not success
                     try:
-                        error = self._get_error_message(driver)
+                        error = self._get_error_message(driver, "//div[@class='errmsg-tip']//span")
                         if error:
                             # 网络连接超时（RK001）,请重试！ 可能是登录次数过多导致
                             logging.info(f"Sliding CAPTCHA recognition failed [{error}] and reloaded.\r")
@@ -298,15 +301,72 @@ class DataFetcher:
                 else:
                     return True
             logging.error(f"Login failed, maybe caused by Sliding CAPTCHA recognition failed")
+        return self._fallback_login(driver)
+
+    def _get_error_message(self, driver, path) -> Optional[str]:
+        """获取错误信息，如果不存在则返回 None"""
+        # 关闭隐式等待
+        driver.implicitly_wait(0)
+        try:
+            element = driver.find_element(By.XPATH, path)
+            return element.text
+        except Exception:
+            return None
+        finally:
+            driver.implicitly_wait(self.DRIVER_IMPLICITY_WAIT_TIME)  # 恢复隐式等待
+
+    def _fallback_login(self, driver) -> bool:
+        """使用 fallback 登录"""
+        fallback = os.getenv("LOGIN_FALLBACK")
+        if fallback == 'qrcode':
+            return self._qr_login(driver)
         return False
 
-    def _get_error_message(self, driver) -> Optional[str]:
-        """获取错误信息，如果不存在则返回 None"""
-        try:
-            element = driver.find_element(By.XPATH, "//div[@class='errmsg-tip']//span")
-            return element.text
-        except NoSuchElementException:
-            return None
+    def _qr_login(self, driver) -> bool:
+        logging.info("qrcode login start")
+        # 切换验证码
+        element = WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(
+            EC.presence_of_element_located((By.CLASS_NAME, 'qr_code')))
+        driver.execute_script("arguments[0].click();", element)
+        logging.info("switch to qrcode mode")
+
+        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+        # 获取登录二维码
+        qrElement = WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(
+            EC.visibility_of_element_located((By.XPATH, "//div[@class='sweepCodePic']//img")))
+        logging.info("find imgLogin element")
+
+        img_src = qrElement.get_attribute('src')
+
+        if img_src.startswith('data:image'):
+            base64_data = img_src.split(',')[1]
+            img_screenshot = base64.b64decode(base64_data)
+        else:
+          logging.info('qrcode img src not base64')
+          img_screenshot = qrElement.screenshot_as_png
+
+        with open("/data/login_qr_code.png", "wb") as f:
+            f.write(img_screenshot)
+            logging.info("save qrcode to /data/login_qr_code.png")
+
+        from notify import UrlLoginQrCodeNotify
+        notifyFunc = UrlLoginQrCodeNotify()
+        notifyFunc(img_screenshot)
+        for i in range(1, self.QR_CODE_LOGIN_WAIT_COUNT + 1):
+            logging.info(f'qrcode check login wait[{self.QR_CODE_LOGIN_WAIT_TIME_INTERVAL_UNIT}] count[{i}]')
+            time.sleep(self.QR_CODE_LOGIN_WAIT_TIME_INTERVAL_UNIT)
+            if (driver.current_url != LOGIN_URL):
+                logging.info("qrcode Login success")
+                return True
+            else:
+                error = self._get_error_message(driver, "//div[@class='sweepCodePic']//div[@class='erwBg']//p")
+                if error is not None:
+                    logging.error(f'qrcode login error[{error}]')
+                    return False
+
+        logging.warning("qrcode Login timeout")
+
+        return False
         
     def fetch(self):
 
