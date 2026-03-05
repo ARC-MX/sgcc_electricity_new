@@ -278,8 +278,15 @@ class DataFetcher:
                     'return document.getElementById("slideVerify").childNodes[0].width;'
                 )
                 scale = canvas_width / 416.0
-                scaled_distance = round(distance * scale)
-                logging.info(f"CAPTCHA distance={distance}, canvas_width={canvas_width}, scale={scale:.3f}, scaled={scaled_distance}\r")
+                # https://github.com/ARC-MX/sgcc_electricity_new/issues/242
+                img_distance = distance * scale # 图片空缺的实际距离
+                
+                # 滑块滑动和图片空缺的移动不一致
+                max_sliding = 410 - 40 # 滑块最多可以滑动的距离  图片 - 滑块宽度 = 370
+                img_max_sliding = 418 - 68 # 图片最多可以滑动的距离 滑动到最大时候会超出背景，且和滑块的相对位置会发生变化 最右侧是418 - 图片宽度 = 350
+                sliding_scale = max_sliding / img_max_sliding # 滑块和图片滑动的比例 1.0571428571 图片滑动比较慢
+                scaled_distance = round(img_distance * sliding_scale) # 滑块需要滑动的实际距离
+                logging.info(f"CAPTCHA distance={distance}, img_distance={img_distance:.3f}, canvas_width={canvas_width}, scale={scale:.3f}, sliding_scale={sliding_scale:.3f}, scaled={scaled_distance}\r")
 
                 self._sliding_track(driver, scaled_distance)
                 time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
