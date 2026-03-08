@@ -2,6 +2,7 @@
 from PIL import ImageDraw,Image,ImageOps
 import numpy as np
 import onnxruntime
+import os
 
 anchors = [[(116,90),(156,198),(373,326)],[(30,61),(62,45),(59,119)],[(10,13),(16,30),(33,23)]]
 anchors_yolo_tiny = [[(81, 82), (135, 169), (344, 319)], [(10, 14), (23, 27), (37, 58)]]
@@ -11,7 +12,15 @@ CLASSES=["target"]
 
 class ONNX:
     def __init__(self,onnx_file_name="captcha.onnx"):
-        self.onnx_session = onnxruntime.InferenceSession(onnx_file_name) 
+        options = onnxruntime.SessionOptions()
+        thread_limit = os.getenv("OP_NUM_THREADS")
+
+        if thread_limit and thread_limit.isdigit():
+            limit = int(thread_limit)
+            options.intra_op_num_threads = limit
+            options.inter_op_num_threads = limit
+
+        self.onnx_session = onnxruntime.InferenceSession(onnx_file_name, sess_options=options)
 
     # sigmoid函数
     def sigmoid(self,x):

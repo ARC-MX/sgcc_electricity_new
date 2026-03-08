@@ -144,6 +144,11 @@ RECHARGE_NOTIFY=Flase
 BALANCE=5.0
 # pushplus token 如果有多个就用","分隔，","之间不要有空格，单个就不要有","
 PUSHPLUS_TOKEN=xxxxxxx,xxxxxxx,xxxxxxx
+
+## ONNX Runtime 线程数限制（可选）
+# 在 Docker 中限制了 CPU 数量时，设置此项可消除线程亲和度错误
+# 建议设置为 Docker 分配的 CPU 核心数
+# OP_NUM_THREADS=2
 ```
 
 4. 运行
