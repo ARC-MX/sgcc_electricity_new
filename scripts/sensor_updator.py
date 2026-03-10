@@ -32,7 +32,7 @@ class SensorUpdator:
         self._save_to_cache(user_id, balance, last_daily_date, last_daily_usage, yearly_charge, yearly_usage, month_charge, month_usage)
         postfix = f"_{user_id[-4:]}"
         if balance is not None:
-            if self.balance_notify is not None:
+            if notify and self.balance_notify is not None:
                 self.balance_notify(user_id, balance)
             self.update_balance(postfix, balance)
         if last_daily_usage is not None:
