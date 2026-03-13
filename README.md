@@ -166,6 +166,10 @@ QR_CODE_LOGIN_WAIT_COUNT=30
 #二维码登录等待间隔
 QR_CODE_LOGIN_WAIT_TIME_INTERVAL_UNIT=10
 
+## ONNX Runtime 线程数限制（可选）
+# 在 Docker 中限制了 CPU 数量时，设置此项可消除线程亲和度错误
+# 建议设置为 Docker 分配的 CPU 核心数
+# OP_NUM_THREADS=2
 ```
 
 4. 运行
