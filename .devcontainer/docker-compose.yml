@@ -1,0 +1,12 @@
+services:
+  sgcc_electricity:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - SET_CONTAINER_TIMEZONE=true
+      - CONTAINER_TIMEZONE=Asia/Shanghai
+    volumes:
+      - ..:/workspaces:cached
+      # - ..:/data:cached        # if you want to read homeassistant.db, homeassistant.db is in the container at /data/
+    command: sleep infinity

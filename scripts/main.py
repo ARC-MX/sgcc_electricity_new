@@ -22,47 +22,28 @@ def main():
         with open('/data/options.json') as f:
             options = json.load(f)
         try:
-            PHONE_NUMBER = options.get("PHONE_NUMBER")
-            PASSWORD = options.get("PASSWORD")
-            HASS_URL = options.get("HASS_URL")
-            JOB_START_TIME = options.get("JOB_START_TIME", "07:00")
-            LOG_LEVEL = options.get("LOG_LEVEL", "INFO")
-            VERSION = os.getenv("VERSION")
-            RETRY_TIMES_LIMIT = int(options.get("RETRY_TIMES_LIMIT", 5))
-
-            logger_init(LOG_LEVEL)
-            os.environ["HASS_URL"] = options.get("HASS_URL", "http://homeassistant.local:8123/")
-            os.environ["HASS_TOKEN"] = options.get("HASS_TOKEN", "")
-            os.environ["ENABLE_DATABASE_STORAGE"] = str(options.get("ENABLE_DATABASE_STORAGE", "false")).lower()
-            os.environ["IGNORE_USER_ID"] = options.get("IGNORE_USER_ID", "xxxxx,xxxxx")
-            os.environ["DB_NAME"] = options.get("DB_NAME", "homeassistant.db")
-            os.environ["RETRY_TIMES_LIMIT"] = str(options.get("RETRY_TIMES_LIMIT", 5))
-            os.environ["DRIVER_IMPLICITY_WAIT_TIME"] = str(options.get("DRIVER_IMPLICITY_WAIT_TIME", 60))
-            os.environ["LOGIN_EXPECTED_TIME"] = str(options.get("LOGIN_EXPECTED_TIME", 10))
-            os.environ["RETRY_WAIT_TIME_OFFSET_UNIT"] = str(options.get("RETRY_WAIT_TIME_OFFSET_UNIT", 10))
-            os.environ["DATA_RETENTION_DAYS"] = str(options.get("DATA_RETENTION_DAYS", 7))
-            os.environ["RECHARGE_NOTIFY"] = str(options.get("RECHARGE_NOTIFY", "false")).lower()
-            os.environ["BALANCE"] = str(options.get("BALANCE", 5.0))
-            os.environ["PUSHPLUS_TOKEN"] = options.get("PUSHPLUS_TOKEN", "")
+            for key, value in options.items():
+                os.environ[key] = str(value)
             logging.info(f"当前以Homeassistant Add-on 形式运行.")
         except Exception as e:
             logging.error(f"Failing to read the options.json file, the program will exit with an error message: {e}.")
             sys.exit()
-    else:
-        try:
-            PHONE_NUMBER = os.getenv("PHONE_NUMBER")
-            PASSWORD = os.getenv("PASSWORD")
-            HASS_URL = os.getenv("HASS_URL")
-            JOB_START_TIME = os.getenv("JOB_START_TIME","07:00" )
-            LOG_LEVEL = os.getenv("LOG_LEVEL","INFO")
-            VERSION = os.getenv("VERSION")
-            RETRY_TIMES_LIMIT = int(os.getenv("RETRY_TIMES_LIMIT", 5))
-            
-            logger_init(LOG_LEVEL)
-            logging.info(f"The current run runs as a docker image.")
-        except Exception as e:
-            logging.error(f"Failing to read the .env file, the program will exit with an error message: {e}.")
-            sys.exit()
+
+    try:
+        PHONE_NUMBER = os.getenv("PHONE_NUMBER")
+        logging.info(f"read env PHONE_NUMBER : {PHONE_NUMBER}")
+        PASSWORD = os.getenv("PASSWORD")
+        HASS_URL = os.getenv("HASS_URL")
+        JOB_START_TIME = os.getenv("JOB_START_TIME","07:00" )
+        LOG_LEVEL = os.getenv("LOG_LEVEL","INFO")
+        VERSION = os.getenv("VERSION")
+        RETRY_TIMES_LIMIT = int(os.getenv("RETRY_TIMES_LIMIT", 5))
+        
+        logger_init(LOG_LEVEL)
+        logging.info(f"The current run runs as a docker image.")
+    except Exception as e:
+        logging.error(f"Failing to read the .env file, the program will exit with an error message: {e}.")
+        sys.exit()
 
     logging.info(f"The current repository version is {VERSION}, and the repository address is https://github.com/ARC-MX/sgcc_electricity_new.git")
     current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

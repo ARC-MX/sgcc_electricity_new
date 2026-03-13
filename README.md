@@ -113,12 +113,19 @@ PASSWORD="xxxx"
 # 排除指定用户ID，如果出现一些不想检测的ID或者有些充电、发电帐号、可以使用这个环境变量，如果有多个就用","分隔，","之间不要有空格
 IGNORE_USER_ID=xxxxxxx,xxxxxxx,xxxxxxx
 
-# SQLite 数据库配置
-# or False 不启用数据库储存每日用电量数据。
-ENABLE_DATABASE_STORAGE=True
-# 数据库名，默认为homeassistant
+# DB_TYPE 数据储存类型 SQLITE / MYSQL w，默认未NONE 不进行数据储存
+DB_TYPE=NONE
+
+# sqlite 数据库名，默认为homeassistant
 DB_NAME="homeassistant.db"
 # COLLECTION_NAME默认为electricity_daily_usage_{国网用户id}，不支持修改。
+
+# mysql 的数据库配置
+MYSQL_HOST="mysql.lan"
+MYSQL_USER="user"
+MYSQL_PASSWORD="password"
+MYSQL_DATABASE="sgcc"
+MYSQL_PORT=3306
 
 ## homeassistant配置
 # 改为你的localhost为你的homeassistant地址
@@ -137,13 +144,28 @@ RETRY_WAIT_TIME_OFFSET_UNIT=15
 # 国网原本可以记录 30 天,现在不开通智能缴费只能查询 7 天造成错误
 DATA_RETENTION_DAYS=7
 
-## 余额提醒
-# 是否缴费提醒
-RECHARGE_NOTIFY=Flase
-# 余额
+## PUSH_TYPE 余额不足提醒方式 PUSHPLUS / URLPUSH ，默认为None不通知
+PUSH_TYPE=None
+# 余额提现阈值，通知类型PUSHPLUS / URLPUSH 都生效
 BALANCE=5.0
 # pushplus token 如果有多个就用","分隔，","之间不要有空格，单个就不要有","
 PUSHPLUS_TOKEN=xxxxxxx,xxxxxxx,xxxxxxx
+
+# url_push 地址 通知body {"user_id": user_id, "balance": balance}
+PUSH_URL="http://push.lan/notify"
+
+# 密码登录失败（登录次数过多等）的备选方案
+LOGIN_FALLBACK='qrcode'
+# 二维码的提交地址
+PUSH_QRCODE_URL="http://push.lan/qrcode"
+
+# 二维码扫描后的最多等待时间 = QR_CODE_LOGIN_WAIT_COUNT x QR_CODE_LOGIN_WAIT_TIME_INTERVAL_UNIT
+# 测试发现二维码默认有效期限为60s
+#二维码登录等待次数
+QR_CODE_LOGIN_WAIT_COUNT=30
+#二维码登录等待间隔
+QR_CODE_LOGIN_WAIT_TIME_INTERVAL_UNIT=10
+
 ```
 
 4. 运行
