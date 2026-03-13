@@ -6,5 +6,6 @@ onnxruntime==1.18.1
 numpy==1.26.2
 webdrivermanager_cn==2.4.0
 webdriver-manager==4.0.2
+mysql-connector-python==9.4.0
 # python-dotenv
 # python-dateutil

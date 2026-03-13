@@ -1,0 +1,12 @@
+{
+	"name": "sgcc_electricity",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "sgcc_electricity",
+	"workspaceFolder": "/workspaces",
+	"mounts": [
+		"type=bind,source=${localWorkspaceFolder},target=/workspaces,consistency=cached"
+	],
+	"forwardPorts": [],
+	"postCreateCommand": "pip install -r requirements.txt && pip install pytest",
+	"postAttachCommand": ""
+}

@@ -1,12 +1,10 @@
 import logging
 import os
 import re
-import subprocess
 import time
 
 import random
 import base64
-import sqlite3
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver import ActionChains
@@ -18,6 +16,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 from sensor_updator import SensorUpdator
 from error_watcher import ErrorWatcher
+from typing import Optional
 
 from const import *
 
@@ -91,13 +90,28 @@ class DataFetcher:
         self._password = password
         self.onnx = ONNX("./captcha.onnx")
 
-        # 获取 ENABLE_DATABASE_STORAGE 的值，默认为 False
-        self.enable_database_storage = os.getenv("ENABLE_DATABASE_STORAGE", "false").lower() == "true"
         self.DRIVER_IMPLICITY_WAIT_TIME = int(os.getenv("DRIVER_IMPLICITY_WAIT_TIME", 60))
         self.RETRY_TIMES_LIMIT = int(os.getenv("RETRY_TIMES_LIMIT", 5))
         self.LOGIN_EXPECTED_TIME = int(os.getenv("LOGIN_EXPECTED_TIME", 10))
         self.RETRY_WAIT_TIME_OFFSET_UNIT = int(os.getenv("RETRY_WAIT_TIME_OFFSET_UNIT", 10))
         self.IGNORE_USER_ID = os.getenv("IGNORE_USER_ID", "xxxxx,xxxxx").split(",")
+        self.QR_CODE_LOGIN_WAIT_COUNT = int(os.getenv("QR_CODE_LOGIN_WAIT_COUNT", 7))
+        self.QR_CODE_LOGIN_WAIT_TIME_INTERVAL_UNIT = int(os.getenv("QR_CODE_LOGIN_WAIT_TIME_INTERVAL_UNIT", 10))
+        self._init_db()
+    
+    def _init_db(self):
+        self.db_type = os.getenv("DB_TYPE", "None").lower()
+        if self.db_type == 'mysql':
+            from db import MysqlDB
+            self.db = MysqlDB()
+            logging.info("Using MySQL database to store data.")
+        elif self.db_type == 'sqlite':
+            from db import SqliteDB
+            self.db = SqliteDB()
+            logging.info("Using Sqlite database to store data.")
+        else:
+            self.db = None
+            logging.info("No database will be used to store data.")
 
     # @staticmethod
     def _click_button(self, driver, button_search_type, button_search_key):
@@ -151,62 +165,8 @@ class DataFetcher:
         time.sleep(random.uniform(0.05, 0.15))
         ActionChains(driver).release().perform()
 
-    def connect_user_db(self, user_id):
-        """创建数据库集合，db_name = electricity_daily_usage_{user_id}
-        :param user_id: 用户ID"""
-        try:
-            # 创建数据库
-            DB_NAME = os.getenv("DB_NAME", "homeassistant.db")
-            if 'PYTHON_IN_DOCKER' in os.environ: 
-                DB_NAME = "/data/" + DB_NAME
-            self.connect = sqlite3.connect(DB_NAME)
-            self.connect.cursor()
-            logging.info(f"Database of {DB_NAME} created successfully.")
-            # 创建表名
-            self.table_name = f"daily{user_id}"
-            sql = f'''CREATE TABLE IF NOT EXISTS {self.table_name} (
-                    date DATE PRIMARY KEY NOT NULL, 
-                    usage REAL NOT NULL)'''
-            self.connect.execute(sql)
-            logging.info(f"Table {self.table_name} created successfully")
-			
-			# 创建data表名
-            self.table_expand_name = f"data{user_id}"
-            sql = f'''CREATE TABLE IF NOT EXISTS {self.table_expand_name} (
-                    name TEXT PRIMARY KEY NOT NULL,
-                    value TEXT NOT NULL)'''
-            self.connect.execute(sql)
-            logging.info(f"Table {self.table_expand_name} created successfully")
-			
-        # 如果表已存在，则不会创建
-        except sqlite3.Error as e:
-            logging.debug(f"Create db or Table error:{e}")
-            return False
-        return True
-
-    def insert_data(self, data:dict):
-        if self.connect is None:
-            logging.error("Database connection is not established.")
-            return
-        # 创建索引
-        try:
-            sql = f"INSERT OR REPLACE INTO {self.table_name} VALUES(strftime('%Y-%m-%d','{data['date']}'),{data['usage']});"
-            self.connect.execute(sql)
-            self.connect.commit()
-        except BaseException as e:
-            logging.debug(f"Data update failed: {e}")
-
     def insert_expand_data(self, data:dict):
-        if self.connect is None:
-            logging.error("Database connection is not established.")
-            return
-        # 创建索引
-        try:
-            sql = f"INSERT OR REPLACE INTO {self.table_expand_name} VALUES('{data['name']}','{data['value']}');"
-            self.connect.execute(sql)
-            self.connect.commit()
-        except BaseException as e:
-            logging.debug(f"Data update failed: {e}")
+        self.db.insert_expand_data(data)
                 
     def _get_webdriver(self):
         if platform.system() == 'Windows':
@@ -286,7 +246,8 @@ class DataFetcher:
             logging.info("Click login button.\r")
 
             return True
-        else :
+        # 增加判空校验便于测试fallback
+        elif self._password is not None and len(self._password) > 0:
             # input username and password
             input_elements = driver.find_elements(By.CLASS_NAME, "el-input__inner")
             input_elements[0].send_keys(self._username)
@@ -317,14 +278,27 @@ class DataFetcher:
                     'return document.getElementById("slideVerify").childNodes[0].width;'
                 )
                 scale = canvas_width / 416.0
-                scaled_distance = round(distance * scale)
-                logging.info(f"CAPTCHA distance={distance}, canvas_width={canvas_width}, scale={scale:.3f}, scaled={scaled_distance}\r")
+                # https://github.com/ARC-MX/sgcc_electricity_new/issues/242
+                img_distance = distance * scale # 图片空缺的实际距离
+                
+                # 滑块滑动和图片空缺的移动不一致
+                max_sliding = 410 - 40 # 滑块最多可以滑动的距离  图片 - 滑块宽度 = 370
+                img_max_sliding = 418 - 68 # 图片最多可以滑动的距离 滑动到最大时候会超出背景，且和滑块的相对位置会发生变化 最右侧是418 - 图片宽度 = 350
+                sliding_scale = max_sliding / img_max_sliding # 滑块和图片滑动的比例 1.0571428571 图片滑动比较慢
+                scaled_distance = round(img_distance * sliding_scale) # 滑块需要滑动的实际距离
+                logging.info(f"CAPTCHA distance={distance}, img_distance={img_distance:.3f}, canvas_width={canvas_width}, scale={scale:.3f}, sliding_scale={sliding_scale:.3f}, scaled={scaled_distance}\r")
 
                 self._sliding_track(driver, scaled_distance)
                 time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
                 if (driver.current_url == LOGIN_URL): # if login not success
                     try:
-                        logging.info(f"Sliding CAPTCHA recognition failed and reloaded.\r")
+                        error = self._get_error_message(driver, "//div[@class='errmsg-tip']//span")
+                        if error:
+                            # 网络连接超时（RK001）,请重试！ 可能是登录次数过多导致
+                            logging.info(f"Sliding CAPTCHA recognition failed [{error}] and reloaded.\r")
+                        else:
+                            logging.info(f"Sliding CAPTCHA recognition failed and reloaded.\r")
+
                         self._click_button(driver, By.CLASS_NAME, "el-button.el-button--primary")
                         time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT*2)
                         continue
@@ -334,6 +308,71 @@ class DataFetcher:
                 else:
                     return True
             logging.error(f"Login failed, maybe caused by Sliding CAPTCHA recognition failed")
+        return self._fallback_login(driver)
+
+    def _get_error_message(self, driver, path) -> Optional[str]:
+        """获取错误信息，如果不存在则返回 None"""
+        # 关闭隐式等待
+        driver.implicitly_wait(0)
+        try:
+            element = driver.find_element(By.XPATH, path)
+            return element.text
+        except Exception:
+            return None
+        finally:
+            driver.implicitly_wait(self.DRIVER_IMPLICITY_WAIT_TIME)  # 恢复隐式等待
+
+    def _fallback_login(self, driver) -> bool:
+        """使用 fallback 登录"""
+        fallback = os.getenv("LOGIN_FALLBACK")
+        if fallback == 'qrcode':
+            return self._qr_login(driver)
+        return False
+
+    def _qr_login(self, driver) -> bool:
+        logging.info("qrcode login start")
+        # 切换验证码
+        element = WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(
+            EC.presence_of_element_located((By.CLASS_NAME, 'qr_code')))
+        driver.execute_script("arguments[0].click();", element)
+        logging.info("switch to qrcode mode")
+
+        time.sleep(self.RETRY_WAIT_TIME_OFFSET_UNIT)
+        # 获取登录二维码
+        qrElement = WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(
+            EC.visibility_of_element_located((By.XPATH, "//div[@class='sweepCodePic']//img")))
+        logging.info("find imgLogin element")
+
+        img_src = qrElement.get_attribute('src')
+
+        if img_src.startswith('data:image'):
+            base64_data = img_src.split(',')[1]
+            img_screenshot = base64.b64decode(base64_data)
+        else:
+          logging.info('qrcode img src not base64')
+          img_screenshot = qrElement.screenshot_as_png
+
+        with open("/data/login_qr_code.png", "wb") as f:
+            f.write(img_screenshot)
+            logging.info("save qrcode to /data/login_qr_code.png")
+
+        from notify import UrlLoginQrCodeNotify
+        notifyFunc = UrlLoginQrCodeNotify()
+        notifyFunc(img_screenshot)
+        for i in range(1, self.QR_CODE_LOGIN_WAIT_COUNT + 1):
+            logging.info(f'qrcode check login wait[{self.QR_CODE_LOGIN_WAIT_TIME_INTERVAL_UNIT}] count[{i}]')
+            time.sleep(self.QR_CODE_LOGIN_WAIT_TIME_INTERVAL_UNIT)
+            if (driver.current_url != LOGIN_URL):
+                logging.info("qrcode Login success")
+                return True
+            else:
+                error = self._get_error_message(driver, "//div[@class='sweepCodePic']//div[@class='erwBg']//p")
+                if error is not None:
+                    logging.error(f'qrcode login error[{error}]')
+                    return False
+
+        logging.warning("qrcode Login timeout")
+
         return False
         
     def fetch(self):
@@ -462,14 +501,14 @@ class DataFetcher:
             logging.error(f"Get month power usage for {user_id} failed, pass")
 
         # 新增储存用电量
-        if self.enable_database_storage:
+        if self.db is not None:
             # 将数据存储到数据库
-            logging.info("enable_database_storage is true, we will store the data to the database.")
+            logging.info(f"db is {self.db_type}, we will store the data to the database.")
             # 按天获取数据 7天/30天
             date, usages = self._get_daily_usage_data(driver)
             self._save_user_data(user_id, balance, last_daily_date, last_daily_usage, date, usages, month, month_usage, month_charge, yearly_charge, yearly_usage)
         else:
-            logging.info("enable_database_storage is false, we will not store the data to the database.")
+            logging.info("db is None, we will not store the data to the database.")
 
         
         if month_charge:
@@ -671,7 +710,7 @@ class DataFetcher:
 
     def _save_user_data(self, user_id, balance, last_daily_date, last_daily_usage, date, usages, month, month_usage, month_charge, yearly_charge, yearly_usage):
         # 连接数据库集合
-        if self.connect_user_db(user_id):
+        if self.db.connect_user_db(user_id):
             # 写入当前户号
             dic = {'name': 'user', 'value': f"{user_id}"}
             self.insert_expand_data(dic)
@@ -697,7 +736,7 @@ class DataFetcher:
                     dic = {'date': date[index], 'usage': float(usages[index])}
                     # 插入到数据库
                     try:
-                        self.insert_data(dic)
+                        self.db.insert_data(dic)
                         logging.info(f"The electricity consumption of {usages[index]}KWh on {date[index]} has been successfully deposited into the database")
                     except Exception as e:
                         logging.debug(f"The electricity consumption of {date[index]} failed to save to the database, which may already exist: {str(e)}")
@@ -705,9 +744,9 @@ class DataFetcher:
                 for index in range(len(month)):
                     try:
                         dic = {'name': f"{month[index]}usage", 'value': f"{month_usage[index]}"}
-                        self.insert_expand_data(dic)
+                        self.db.insert_expand_data(dic)
                         dic = {'name': f"{month[index]}charge", 'value': f"{month_charge[index]}"}
-                        self.insert_expand_data(dic)
+                        self.db.insert_expand_data(dic)
                     except Exception as e:
                         logging.debug(f"The electricity consumption of {month[index]} failed to save to the database, which may already exist: {str(e)}")
             if month_charge:
@@ -726,7 +765,7 @@ class DataFetcher:
             dic = {'name': f"month_charge", 'value': f"{month_charge}"}
             self.insert_expand_data(dic)
             # dic = {'date': month[index], 'usage': float(month_usage[index]), 'charge': float(month_charge[index])}
-            self.connect.close()
+            self.db.close_connect()
         else:
             logging.info("The database creation failed and the data was not written correctly.")
             return
