@@ -241,10 +241,10 @@ def _solve_slider(driver: WebDriver, selectors: dict) -> bool:
         import base64
         from openai import OpenAI
 
-        api_key = __import__('os').getenv('ARK_API_KEY', '')
+        import const
         client = OpenAI(
-            base_url="https://ark.cn-beijing.volces.com/api/v3",
-            api_key=api_key
+            base_url=const.ARK_BASE_URL,
+            api_key=const.ARK_API_KEY
         )
 
         if bg_url.startswith("http"):
@@ -261,7 +261,7 @@ def _solve_slider(driver: WebDriver, selectors: dict) -> bool:
         bg_w, bg_h = img.size
 
         response = client.chat.completions.create(
-            model="doubao-seed-2-0-pro-260215",
+            model=const.ARK_MODEL,
             messages=[{
                 "role": "user",
                 "content": [

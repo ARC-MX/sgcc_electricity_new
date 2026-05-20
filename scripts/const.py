@@ -28,6 +28,10 @@ PREPAY_BALANCE_SENSOR_NAME = "sensor.prepay_balance"
 BALANCE_UNIT = "CNY"
 USAGE_UNIT = "KWH"
 
+ARK_API_KEY = os.getenv('ARK_API_KEY', '').strip()
+ARK_BASE_URL = os.getenv('ARK_BASE_URL', 'https://ark.cn-beijing.volces.com/api/v3')
+ARK_MODEL = os.getenv('ARK_MODEL', 'doubao-seed-2-0-pro-260215')
+
 
 def get_data_dir() -> str:
     """获取数据存储目录：Docker 用 /data，本地用项目下的 data/"""

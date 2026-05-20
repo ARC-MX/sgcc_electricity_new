@@ -31,6 +31,9 @@ options:
   RECHARGE_NOTIFY: false
   BALANCE: 5.0
   PUSHPLUS_TOKEN: "xxxx,xxxx"
+  ARK_API_KEY: ""
+  ARK_BASE_URL: ""
+  ARK_MODEL: ""
 schema:
   PHONE_NUMBER: str
   PASSWORD: password
@@ -45,3 +48,6 @@ schema:
   RECHARGE_NOTIFY: bool 
   BALANCE: float 
   PUSHPLUS_TOKEN: str
+  ARK_API_KEY: password
+  ARK_BASE_URL: str?
+  ARK_MODEL: str?
