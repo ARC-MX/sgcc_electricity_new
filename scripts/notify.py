@@ -5,10 +5,10 @@ import requests
 import io
 
 class PushplusNotify(typ.NamedTuple):
-    
+
     def __call__(self, user_id, balance):
         BALANCE = float(os.getenv("BALANCE", 10.0))
-        logging.info(f"Check the electricity bill balance. When the balance is less than {BALANCE} CNY, the notification will be sent")
+        logging.info(f"检查电费余额。当余额低于 {BALANCE} 元时，将发送通知")
         if balance < BALANCE :
             PUSHPLUS_TOKEN = os.getenv("PUSHPLUS_TOKEN").split(",")
             for token in PUSHPLUS_TOKEN:
@@ -17,22 +17,22 @@ class PushplusNotify(typ.NamedTuple):
                 url = ("http://www.pushplus.plus/send?token="+ token+ "&title="+ title+ "&content="+ content)
                 resp = requests.get(url)
                 logging.info(
-                    f"The current balance of user id {user_id} is {balance} CNY less than {BALANCE} CNY, notice has been sent, please pay attention to check and recharge."
+                    f"用户 {user_id} 当前余额 {balance} 元低于 {BALANCE} 元，已发送通知，请注意查收并及时充值。"
                 )
                 return resp.status_code == 200
         return False
-        
+
 class UrlPushNotify(typ.NamedTuple):
-    
+
     def __call__(self, user_id, balance):
         BALANCE = float(os.getenv("BALANCE", 10.0))
-        logging.info(f"Check the electricity bill balance. When the balance is less than {BALANCE} CNY, the notification will be sent")
+        logging.info(f"检查电费余额。当余额低于 {BALANCE} 元时，将发送通知")
         if balance < BALANCE :
             url = os.getenv("PUSH_URL")
             full_url = f"{url}"
             resp = requests.post(full_url, json={"user_id": user_id, "balance": balance})
             logging.info(
-                f"The current balance of user id {user_id} is {balance} CNY less than {BALANCE} CNY, notice has been sent, please pay attention to check and recharge."
+                f"用户 {user_id} 当前余额 {balance} 元低于 {BALANCE} 元，已发送通知，请注意查收并及时充值。"
             )
             return resp.status_code == 200
         return False
@@ -47,6 +47,6 @@ class UrlLoginQrCodeNotify(typ.NamedTuple):
                 'file': ("qrcode.png", io.BytesIO(qrcode), 'image/png')
             }
             resp = requests.post(url, files=files)
-            logging.info("push qrcode to url")
+            logging.info("推送二维码到URL")
             return resp.status_code == 200
         return False

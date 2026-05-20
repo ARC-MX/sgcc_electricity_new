@@ -1,5 +1,5 @@
 """
-This script provides a wrapper to save screenshots of errors.
+本脚本提供错误截图保存的封装功能。
 """
 
 import os
@@ -13,30 +13,30 @@ class ErrorWatcher:
     @classmethod
     def init(cls, **kwargs):
         """
-        Initialize the ErrorWatcher singleton instance.
-        This method should be called once before using the ErrorWatcher.
-        It can take the following keyword arguments:
-        - root_dir: The root directory for saving screenshots (default is current working directory).
-        - screenshot_dir: The directory where screenshots will be saved (default is 'screenshots' in the root directory).
-        - driver: The driver instance used for taking screenshots (default is None).
+        初始化 ErrorWatcher 单例实例。
+        在使用 ErrorWatcher 之前应先调用此方法。
+        可接受以下关键字参数：
+        - root_dir: 保存截图的根目录（默认为当前工作目录）。
+        - screenshot_dir: 截图保存的目录（默认为根目录下的 'screenshots' 目录）。
+        - driver: 用于截图的驱动实例（默认为 None）。
         """
         if cls._instance is None:
             cls._instance = cls(**kwargs)
         return cls._instance
-    
+
     @classmethod
     def instance(cls):
         if cls._instance is None:
             raise ValueError("ErrorWatcher has not been initialized. Call init() first.")
         return cls._instance
-    
+
     @classmethod
     def watch(cls, func: Optional[Callable] = None, **options) -> Callable:
         """
-        Decorator to wrap a function and catch exceptions.
-        If an error occurs, it will take a screenshot.
+        装饰器，用于包装函数并捕获异常。
+        如果发生错误，将截取屏幕截图。
 
-        Usage:
+        用法：
         1. @ErrorWatcher.watch
         2. @ErrorWatcher.watch(driver=my_driver)
         3. @ErrorWatcher.watch(error_type=ValueError)
@@ -48,23 +48,23 @@ class ErrorWatcher:
                 instance = cls.instance()
                 return instance._watch_impl(f, *args, **kwargs)
             return wrapped
-        
+
         if func is not None:
-            # If the function is provided directly, return the wrapped function
+            # 如果直接传入了函数，则返回包装后的函数
             return decorator(func)
         else:
-            # If no function is provided, return the decorator
+            # 如果没有传入函数，则返回装饰器
             return decorator
 
     def set_driver(self, driver):
         """
-        Set the driver for taking screenshots.
+        设置用于截图的驱动。
         """
         self.driver = driver
-    
+
     def watch_this(self, func, **options):
         """
-        Decorator to wrap a function and catch exceptions.
+        装饰器，用于包装函数并捕获异常。
         """
         error_type = options.get('error_type', Exception)
         def wrapper(*args, **kwargs):
@@ -74,9 +74,9 @@ class ErrorWatcher:
                 self.__handle_error(e, options)
                 raise
         return wrapper
-                
 
-    # private methods below
+
+    # 以下为私有方法
 
     def __init__(self, **kwargs):
         self.root_dir = kwargs.get('root_dir', os.getcwd())
@@ -94,26 +94,25 @@ class ErrorWatcher:
         except error_type as e:
             self.__handle_error(e, **options)
             raise e
-    
+
     def __handle_error(self, error, **options):
         """
-        error is not used now, may be used in the future.
+        error 参数当前未使用，保留以备将来使用。
         """
         driver = options.get('driver', self.driver)
         if not driver:
-            logging.error("No driver set for taking screenshots.")
+            logging.error("未设置截图驱动。")
             return
 
         error_message = str(error)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         screenshot_path = os.path.join(self.screenshot_dir, f'error_{timestamp}.png')
-        
+
         try:
             self.driver.save_screenshot(screenshot_path)
-            logging.error(f"Error occurred: {error_message}. Screenshot saved to {screenshot_path}")
+            logging.error(f"发生错误: {error_message}。截图已保存至 {screenshot_path}")
         except Exception as e:
-            logging.error(f"Failed to save screenshot: {e}")
-            # do not raise the exception here to avoid masking the original error
+            logging.error(f"保存截图失败: {e}")
+            # 此处不抛出异常，避免掩盖原始错误
         finally:
             pass
-

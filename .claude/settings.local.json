@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ' *)",
+      "Bash(pip install *)",
+      "Bash(python main.py)",
+      "WebSearch",
+      "Bash(python -m cloakbrowser install)",
+      "Bash(ls -la \"C:\\\\Users\\\\mxwang\\\\.cloakbrowser\\\\chromium-146.0.7680.177.4\\\\\" 2>&1 | head -20)",
+      "Read(//c/Users/mxwang/.cloakbrowser/**)",
+      "Bash(pip show *)",
+      "Bash(python debug_captcha_dom.py)",
+      "Bash(python -c \"import py_compile; py_compile.compile\\('scripts/captcha_selenium.py', doraise=True\\); print\\('Syntax OK'\\)\")",
+      "Bash(python debug_captcha_v4.py)",
+      "Bash(python debug_captcha_v5.py)",
+      "Bash(python debug_hook_verify.py)",
+      "Bash(python debug_hook_jsonp.py)",
+      "Bash(python -c \"import cloakbrowser; print\\('cloakbrowser OK'\\); print\\(cloakbrowser.binary_info\\(\\)['cache_dir']\\)\")",
+      "Bash(python debug_solver_test.py)",
+      "Bash(python debug_diagnose.py)",
+      "Bash(python debug_network_hook.py)",
+      "WebFetch(domain:95598.cn)"
+    ]
+  }
+}

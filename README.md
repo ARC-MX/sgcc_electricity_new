@@ -43,6 +43,11 @@
    | sensor.yearly_electricity_charge_xxxx  | 今年总用电费，单位元。                             |
    | sensor.month_electricity_usage_xxxx    | 最近一个月用电量，单位KWH、度。                    |
    | sensor.month_electricity_charge_xxxx   | 上月总用电费，单位元。                             |
+   | sensor.month_valley_usage_xxxx         | 当月谷时用电量，单位KWH、度。                      |
+   | sensor.month_flat_usage_xxxx           | 当月平时用电量，单位KWH、度。                      |
+   | sensor.month_peak_usage_xxxx           | 当月峰时用电量，单位KWH、度。                      |
+   | sensor.month_tip_usage_xxxx            | 当月尖时用电量，单位KWH、度。                      |
+   | sensor.prepay_balance_xxxx             | 预付费余额/应交金额（后付费账户），单位元。        |
 2. 可选，近三十天每日用电量数据（SQLite数据库）
    数据库表名为 daily+userid ，在项目路径下有个homeassistant.db  的数据库文件就是；
    如需查询可以用
@@ -68,11 +73,41 @@
 
 ## 实现流程
 
-通过python的selenium包获取国家电网的数据，通过homeassistant的提供的[REST API](https://developers.home-assistant.io/docs/api/rest/)将采用POST请求将实体状态更新到homeassistant。
-
-国家电网添加了滑动验证码登录验证，我这边最早采取了调用商业API的方式，现在已经更新成了离线方案。利用Yolov3神经网络识别验证码，请大家放心使用。
+通过 Python 的 Selenium 自动化获取国家电网官网的电费电量数据，使用**原生 Selenium + Chrome 反检测标志位**绕过网站的反爬虫检测（全平台兼容，包括 ARMv6/v7）。登录时的**腾讯点击/滑动验证码**通过**大模型（LLM）视觉识别**自动解算，无需依赖传统 OCR 或 ONNX 神经网络模型。获取数据后通过 Home Assistant 的 [REST API](https://developers.home-assistant.io/docs/api/rest/) 将实体状态 POST 更新到 Home Assistant。
 
 # 安装与部署
+
+## 0）获取大模型 API Key（必读）
+
+本项目使用**火山引擎豆包大模型（doubao-seed-2-0-pro-260215）**自动解算国家电网的腾讯验证码（点击型+滑块型），因此需要先获取火山引擎 ARK API Key。
+
+### 注册步骤
+
+1. **注册火山引擎账号**：访问 [火山引擎官网](https://www.volcengine.com/)，使用手机号注册并完成**实名认证**（个人或企业均可）。
+   - 实名认证入口：https://console.volcengine.com/user/authentication/detail/
+
+2. **开通豆包大模型**：登录 [火山方舟控制台](https://console.volcengine.com/ark)，在**「在线推理」**页面点击**「创建推理接入点」**：
+   - 选择模型：**Doubao-Seed-2.0-pro-260215**（或其他多模态视觉模型）
+   - 记录生成的**接入点 ID**（格式如 `ep-2025xxxxxx-xxxxx`）
+
+3. **获取 API Key**：在方舟控制台左侧菜单选择**「API Key 管理」**→ 点击**「创建 API Key」**→ 复制生成的 Key（格式如 `ark-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`）。
+
+   > 详细图解教程请参考：[火山引擎ARK API 豆包大模型接入教程](https://zhuanlan.zhihu.com/p/2006346459101041060)
+
+4. **配置到 `.env` 文件**：将获取的 API Key 填入环境变量
+   ```bash
+   ARK_API_KEY="ark-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+   ```
+
+### 费用说明
+
+豆包系列模型按 token 计费，每次验证码解算消耗极少（约 500 token），注册即赠送免费额度，个人使用基本免费。具体定价见 [火山引擎官方定价页](https://www.volcengine.com/docs/82379/1099320)。
+
+### 我们使用的模型
+
+本项目通过 OpenAI 兼容接口调用 **`doubao-seed-2-0-pro-260215`** 模型，该模型具备强大的多模态视觉识别能力，能够准确识别验证码中的图标位置和滑块缺口。
+
+---
 
 ## 1）注册国家电网账户
 
@@ -166,10 +201,33 @@ QR_CODE_LOGIN_WAIT_COUNT=30
 #二维码登录等待间隔
 QR_CODE_LOGIN_WAIT_TIME_INTERVAL_UNIT=10
 
+## 浏览器反检测参数（可选，默认值即可正常工作）
+# 浏览器语言
+# BROWSER_LANGUAGE=zh-HK,zh,en-US,en
+# 浏览器窗口尺寸
+# BROWSER_WINDOW_SIZE=1158,848
+# 设备像素比
+# BROWSER_DEVICE_SCALE_FACTOR=2
+# 自定义 User-Agent（留空使用 Chrome 默认）
+# BROWSER_USER_AGENT=
+
 ## ONNX Runtime 线程数限制（可选）
 # 在 Docker 中限制了 CPU 数量时，设置此项可消除线程亲和度错误
 # 建议设置为 Docker 分配的 CPU 核心数
 # OP_NUM_THREADS=2
+
+## 大模型验证码识别配置（必填）
+# 火山引擎 ARK API Key，用于调用豆包大模型解算腾讯验证码
+# 获取地址：https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey
+ARK_API_KEY="your-ark-api-key-here"
+
+## 调试模式（可选）
+# 设置为 true 启用短信验证码登录模式（需要人工输入短信验证码）
+# DEBUG_MODE=false
+
+## 用户名映射（可选）
+# 为每个户号指定友好名称，格式：户号:名称,户号:名称
+# USER_NAMES="1234567890:家庭用电,0987654321:公司用电"
 ```
 
 4. 运行
@@ -299,6 +357,71 @@ template:
         state_class: total_increasing
         unit_of_measurement: "CNY"
         device_class: monetary
+
+  - trigger:
+      - platform: event
+        event_type: state_changed
+        event_data:
+          entity_id: sensor.month_valley_usage_xxxx
+    sensor:
+      - name: month_valley_usage_xxxx
+        unique_id: month_valley_usage_xxxx
+        state: "{{ states('sensor.month_valley_usage_xxxx') }}"
+        state_class: measurement
+        unit_of_measurement: "kWh"
+        device_class: energy
+
+  - trigger:
+      - platform: event
+        event_type: state_changed
+        event_data:
+          entity_id: sensor.month_flat_usage_xxxx
+    sensor:
+      - name: month_flat_usage_xxxx
+        unique_id: month_flat_usage_xxxx
+        state: "{{ states('sensor.month_flat_usage_xxxx') }}"
+        state_class: measurement
+        unit_of_measurement: "kWh"
+        device_class: energy
+
+  - trigger:
+      - platform: event
+        event_type: state_changed
+        event_data:
+          entity_id: sensor.month_peak_usage_xxxx
+    sensor:
+      - name: month_peak_usage_xxxx
+        unique_id: month_peak_usage_xxxx
+        state: "{{ states('sensor.month_peak_usage_xxxx') }}"
+        state_class: measurement
+        unit_of_measurement: "kWh"
+        device_class: energy
+
+  - trigger:
+      - platform: event
+        event_type: state_changed
+        event_data:
+          entity_id: sensor.month_tip_usage_xxxx
+    sensor:
+      - name: month_tip_usage_xxxx
+        unique_id: month_tip_usage_xxxx
+        state: "{{ states('sensor.month_tip_usage_xxxx') }}"
+        state_class: measurement
+        unit_of_measurement: "kWh"
+        device_class: energy
+
+  - trigger:
+      - platform: event
+        event_type: state_changed
+        event_data:
+          entity_id: sensor.prepay_balance_xxxx
+    sensor:
+      - name: prepay_balance_xxxx
+        unique_id: prepay_balance_xxxx
+        state: "{{ states('sensor.prepay_balance_xxxx') }}"
+        state_class: measurement
+        unit_of_measurement: "CNY"
+        device_class: monetary
 ```
 
 配置完成后重启HA, 刷新一下HA界面
@@ -421,16 +544,24 @@ cards:
 
 ## 重要修改通知
 
-2024-06-13：SQLite替换MongoDB，原因是python自带SQLite3，不需要额外安装，也不再需要MongoDB镜像。
-2024-07-03：新增每天定时执行两次，添加配置默认增加近 7 天每日电量写入数据, 可修改为 30 天。
-2024-07-05：新增余额不足提醒功能。
-2024-12-10：新增忽略指定用户ID的功能：针对一些用户拥有充电或者发电账户，可以使用 IGNORE_USER_ID 环境变量忽略特定的ID。
-2025-01-05：新增Homeassistant Add-on部署方式。
-TO-DO
+* 2024-06-13：SQLite替换MongoDB，原因是python自带SQLite3，不需要额外安装，也不再需要MongoDB镜像。
+* 2024-07-03：新增每天定时执行两次，添加配置默认增加近 7 天每日电量写入数据, 可修改为 30 天。
+* 2024-07-05：新增余额不足提醒功能。
+* 2024-12-10：新增忽略指定用户ID的功能：针对一些用户拥有充电或者发电账户，可以使用 IGNORE_USER_ID 环境变量忽略特定的ID。
+* 2025-01-05：新增Homeassistant Add-on部署方式。
+* 2025-05-01：**重大更新**：验证码识别从 ONNX 神经网络升级为**大模型（LLM）视觉识别方案**，使用火山引擎豆包模型解算腾讯点击/滑块验证码。浏览器反检测从  undetected-chromedriver 升级为 **CloakBrowser**（Chromium C++ 源码级反检测）。
+* 2025-05-20：**平台兼容性更新**：弃用 CloakBrowser，改用原生 Selenium + Chrome 反检测标志位方案（参考 ha-95598），全面支持 ARMv6/v7 平台（树莓派2、玩客云等）。
+2025-05-15：新增**分时电量传感器**（谷/平/峰/尖）、**预付费余额传感器**、**应交金额传感器**；支持 Vue 状态直接注入提取数据。
 
-- [X] 增加离线滑动验证码识别方案
+### TO-DO
+
+- [X] 增加离线滑动验证码识别方案 → 已升级为 LLM 视觉方案
 - [X] 添加默认推送服务，电费余额不足提醒
 - [X] 添加Homeassistant Add-on安装方式，在此感谢[Ami8834671](https://github.com/Ami8834671), [DuanXDong](https://github.com/DuanXDong)等小伙伴的idea和贡献
+- [X] 添加大模型（LLM）验证码识别方案（火山引擎豆包模型）
+- [X] 添加 CloakBrowser 反检测浏览器支持
+- [X] 添加分时电量传感器（谷/平/峰/尖）在此感谢[renxiaoyaoo](https://github.com/renxiaoyaoo)的实现思路
+- [X] 添加预付费余额/应交金额传感器
 - [ ] 添加置Homeassistant integration
 
 ## **技术交流群**

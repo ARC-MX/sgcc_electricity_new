@@ -16,7 +16,13 @@ COPY scripts/* /app/
 WORKDIR /app
 
 RUN apt-get --allow-releaseinfo-change update \
-    && apt-get install -y --no-install-recommends jq chromium chromium-driver fonts-noto-cjk tzdata \
+    && apt-get install -y --no-install-recommends \
+        jq fonts-noto-cjk tzdata \
+        chromium chromium-driver \
+        xvfb \
+        libgl1-mesa-glx libglib2.0-0 libnss3 libx11-6 \
+        libxcomposite1 libxrandr2 libxdamage1 libxkbcommon0 \
+        libasound2t64 libpango-1.0-0 libcups2t64 \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone \
     && dpkg-reconfigure --frontend noninteractive tzdata \
@@ -39,4 +45,4 @@ RUN mkdir /data \
 
 ENV LANG=C.UTF-8
 
-CMD ["python3","main.py"]
+CMD ["xvfb-run", "-a", "--server-args=-screen 0 1920x1080x24", "python3", "main.py"]
