@@ -4,5 +4,6 @@ schedule==1.2.1
 Pillow==10.1.0
 numpy==1.26.2
 mysql-connector-python==9.4.0
+openai>=1.0.0
 # python-dotenv
 # python-dateutil
