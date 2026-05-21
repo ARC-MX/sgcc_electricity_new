@@ -1,3 +1,8 @@
+### IDE / editor config
+.claude/
+.vscode/
+.idea/
+
 ### Python template
 config.yaml
 .env
