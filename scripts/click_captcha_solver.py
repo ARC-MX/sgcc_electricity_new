@@ -36,15 +36,35 @@ class ClickCaptchaSolver:
         self.api_key = api_key or os.getenv('LLM_API_KEY') or const.LLM_API_KEY
         self.model = model or os.getenv('LLM_MODEL') or const.LLM_MODEL
         self.base_url = base_url or os.getenv('LLM_BASE_URL') or const.LLM_BASE_URL
-        self._client: Optional[OpenAI] = None
+        # Fallback endpoint chain: LLM_FALLBACK_MODELS is a comma-separated
+        # list. Each entry is either
+        #   model                     (reuse the primary base_url/api_key)
+        #   base_url::api_key::model  (cross-provider, independent endpoint and key)
+        self.endpoints: List[Tuple[str, str, str]] = [(self.base_url, self.api_key, self.model)]
+        for item in os.getenv('LLM_FALLBACK_MODELS', '').split(','):
+            item = item.strip()
+            if not item:
+                continue
+            parts = item.split('::')
+            if len(parts) == 3:
+                self.endpoints.append((parts[0].strip(), parts[1].strip(), parts[2].strip()))
+            elif len(parts) == 1:
+                self.endpoints.append((self.base_url, self.api_key, item))
+            else:
+                logger.warning(f"Ignoring malformed fallback entry: {item}")
+        self._clients: dict = {}
+
+    def _client_for(self, base_url: str, api_key: str) -> OpenAI:
+        """Lazily create (and cache) an OpenAI client per endpoint."""
+        cache_key = (base_url, api_key)
+        if cache_key not in self._clients:
+            self._clients[cache_key] = OpenAI(base_url=base_url, api_key=api_key,
+                                              timeout=240.0, max_retries=2)
+        return self._clients[cache_key]
 
     @property
     def client(self) -> OpenAI:
-        if self._client is None:
-            if not self.api_key:
-                raise RuntimeError("LLM_API_KEY 未设置，验证码解算将失败")
-            self._client = OpenAI(base_url=self.base_url, api_key=self.api_key)
-        return self._client
+        return self._client_for(self.endpoints[0][0], self.endpoints[0][1])
 
     def solve(self, ref_url: str, main_url: str,
               main_width: int, main_height: int) -> List[Tuple[int, int]]:
@@ -138,23 +158,41 @@ class ClickCaptchaSolver:
         content.append({"type": "text", "text": "Use only the visible captcha image above. Return center coordinates for A, B, C as JSON. Do not use page or hidden DOM coordinates."})
         content.append({"type": "text", "text": prompt})
 
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": "Output valid JSON only. No markdown, no explanation."},
-                    {"role": "user", "content": content},
-                ],
-                max_tokens=4096,
-                response_format={"type": "json_object"},
-            )
-            output = response.choices[0].message.content or ""
-            logger.info(f"大模型响应: {output[:400]}")
-            return self._parse_coordinates(output, main_width, main_height)
-        except Exception as e:
-            logger.error(f"大模型错误: {e}")
-            # 400/401/403 等配置错误不应重试，直接抛出终止
-            raise RuntimeError(f"LLM 调用失败: {e}") from e
+        last_err: Optional[Exception] = None
+        for i, (ep_url, ep_key, model_name) in enumerate(self.endpoints):
+            # Some reasoning gateways return an empty content when
+            # response_format=json_object is set. Only enable it on the
+            # primary endpoint, and retry once without it if the body is empty.
+            attempts = [True, False] if i == 0 else [False]
+            for use_rf in attempts:
+                try:
+                    client = self._client_for(ep_url, ep_key)
+                    extra = {"response_format": {"type": "json_object"}} if use_rf else {}
+                    response = client.chat.completions.create(
+                        model=model_name,
+                        messages=[
+                            {"role": "system", "content": "Output valid JSON only. No markdown, no explanation."},
+                            {"role": "user", "content": content},
+                        ],
+                        max_tokens=4096,
+                        **extra,
+                    )
+                    output = response.choices[0].message.content or ""
+                    if not output.strip():
+                        logger.warning(f"Model {model_name} returned empty content (response_format={use_rf})")
+                        continue
+                    if i > 0:
+                        logger.info(f"Fallback endpoint {ep_url} / {model_name} succeeded")
+                    logger.info(f"大模型响应: {output[:400]}")
+                    coords = self._parse_coordinates(output, main_width, main_height)
+                    if coords:
+                        return coords
+                    logger.warning(f"Model {model_name} returned unparsable coords: {output[:200]}")
+                except Exception as e:
+                    last_err = e
+                    logger.warning(f"Model {model_name} failed: {e}")
+                    break
+        raise RuntimeError(f"LLM 调用失败: {last_err}")
 
     def _parse_coordinates(self, text: str,
                            main_width: int, main_height: int) -> List[Tuple[int, int]]:

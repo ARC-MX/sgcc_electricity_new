@@ -9,6 +9,7 @@ Key differences from Selenium version:
 
 import io
 import logging
+import os
 import random
 import re
 import time
@@ -217,8 +218,6 @@ def _solve_slider(page: Page, selectors: dict) -> bool:
         from openai import OpenAI
         import const
 
-        client = OpenAI(base_url=const.LLM_BASE_URL, api_key=const.LLM_API_KEY)
-
         if bg_url.startswith("http"):
             resp = requests.get(bg_url, timeout=15)
             bg_data = resp.content
@@ -232,23 +231,53 @@ def _solve_slider(page: Page, selectors: dict) -> bool:
         img = Image.open(io.BytesIO(bg_data))
         bg_w, bg_h = img.size
 
-        response = client.chat.completions.create(
-            model=const.LLM_MODEL,
-            messages=[{
-                "role": "user",
-                "content": [
-                    {"type": "image_url", "image_url": {"url": bg_uri}},
-                    {"type": "text", "text": (
-                        f"This is a slider captcha background ({bg_w}x{bg_h} px).\n"
-                        "Find the gap and return the X ratio (0~1) of its left edge.\n"
-                        "Output format (single number): 0.XX"
-                    )},
-                ],
-            }],
-            max_tokens=50,
-        )
+        messages = [{
+            "role": "user",
+            "content": [
+                {"type": "image_url", "image_url": {"url": bg_uri}},
+                {"type": "text", "text": (
+                    f"This is a slider captcha background ({bg_w}x{bg_h} px).\n"
+                    "Find the gap and return the X ratio (0~1) of its left edge.\n"
+                    "Output format (single number): 0.XX"
+                )},
+            ],
+        }]
 
-        output = response.choices[0].message.content or ""
+        # Endpoint chain: primary endpoint (const) plus optional
+        # LLM_FALLBACK_MODELS entries (same syntax as click_captcha_solver.py)
+        endpoints = [(const.LLM_BASE_URL, const.LLM_API_KEY, const.LLM_MODEL)]
+        for item in os.getenv("LLM_FALLBACK_MODELS", "").split(","):
+            item = item.strip()
+            if not item:
+                continue
+            parts = item.split("::")
+            if len(parts) == 3:
+                endpoints.append((parts[0].strip(), parts[1].strip(), parts[2].strip()))
+            elif len(parts) == 1:
+                endpoints.append((const.LLM_BASE_URL, const.LLM_API_KEY, item))
+
+        output = ""
+        for i, (ep_url, ep_key, model_name) in enumerate(endpoints):
+            try:
+                client = OpenAI(base_url=ep_url, api_key=ep_key, timeout=120.0)
+                response = client.chat.completions.create(
+                    model=model_name,
+                    messages=messages,
+                    max_tokens=1024,
+                )
+                output = response.choices[0].message.content or ""
+                if not output.strip():
+                    logger.warning(f"Slider model {model_name} returned empty content")
+                    continue
+                if i > 0:
+                    logger.info(f"Slider fallback endpoint {ep_url} / {model_name} succeeded")
+                break
+            except Exception as e:
+                logger.warning(f"Slider model {model_name} failed: {e}")
+                output = ""
+        if not output:
+            return False
+
         logger.info(f"Slider LLM response: {output[:100]}")
         nums = re.findall(r'(\d+\.?\d*)', output)
         if not nums:
