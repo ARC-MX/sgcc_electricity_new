@@ -7,6 +7,7 @@ import time
 import schedule
 import json
 import random
+import traceback
 from error_watcher import ErrorWatcher
 from sensor_updator import SensorUpdator
 
@@ -44,6 +45,10 @@ def main():
         LOG_LEVEL = os.getenv("LOG_LEVEL","INFO")
         VERSION = os.getenv("VERSION")
         RETRY_TIMES_LIMIT = int(os.getenv("RETRY_TIMES_LIMIT", 5))
+        # 二开新增：上海燃气 / 浦东威立雅
+        SHRQ_PHONE_NUMBER = os.getenv("SHRQ_PHONE_NUMBER")
+        SHRQ_PASSWORD = os.getenv("SHRQ_PASSWORD")
+        PDWLY_ID = os.getenv("PDWLY_ID")
 
         logger_init(LOG_LEVEL)
         logging.info(f"当前以Docker镜像方式运行。")
@@ -58,7 +63,7 @@ def main():
     logging.info(f"开始初始化 ErrorWatcher")
     ErrorWatcher.init(root_dir='/data/errors')
     logging.info(f'ErrorWatcher 初始化完成！')
-    fetcher = DataFetcher(PHONE_NUMBER, PASSWORD)
+    fetcher = DataFetcher(PHONE_NUMBER, PASSWORD, SHRQ_PHONE_NUMBER, SHRQ_PASSWORD, PDWLY_ID)
     updator = SensorUpdator()
 
     # 生成随机延迟时间（-10分钟到+10分钟）
@@ -70,8 +75,8 @@ def main():
     next_run_time = parsed_time + timedelta(hours=12)
 
     logging.info(f'立即执行任务！下次运行时间为每天 {parsed_time.strftime("%H:%M")} 和 {next_run_time.strftime("%H:%M")}')
-    schedule.every().day.at(parsed_time.strftime("%H:%M")).do(run_task, fetcher)
-    schedule.every().day.at(next_run_time.strftime("%H:%M")).do(run_task, fetcher)
+    schedule.every().day.at(parsed_time.strftime("%H:%M")).do(run_task, fetcher, updator)
+    schedule.every().day.at(next_run_time.strftime("%H:%M")).do(run_task, fetcher, updator)
 
     # 重发缓存到 HA 的间隔（分钟），默认 60 分钟，用于防止 HA 重启后数据丢失
     CACHE_REPUBLISH_INTERVAL = int(os.getenv("CACHE_REPUBLISH_INTERVAL", "60"))
@@ -81,7 +86,7 @@ def main():
     # 如果缓存恢复成功，则跳过本次启动时的实时抓取，避免频繁重启导致账号被封
     if not updator.republish():
         logging.info("未找到有效缓存，正在从国家电网获取数据...")
-        run_task(fetcher)
+        run_task(fetcher, updator)
     else:
         logging.info("已从缓存恢复数据，跳过启动时抓取以保护账号。")
 
@@ -93,10 +98,55 @@ def main():
 def republish_or_fetch(updator: SensorUpdator, fetcher: DataFetcher):
     if not updator.republish():
         logging.info("缓存数据已过期或不存在，正在从国家电网获取数据...")
-        run_task(fetcher)
+        run_task(fetcher, updator)
 
 
-def run_task(data_fetcher: DataFetcher):
+def run_task(data_fetcher: DataFetcher, sensor_updator: SensorUpdator):
+    # 二开新增：浦东威立雅水费数据（失败不影响国网/燃气）
+    try:
+        user_id_list, month_usage_total_list, month_usage_water_list, month_usage_dirty_list, month_charge_total_list, month_charge_water_list, month_charge_dirty_list, month_list = data_fetcher.fetch_pdwly()
+        for i in range(0, len(user_id_list)):
+            profix = f"_{user_id_list[i]}" if len(user_id_list) > 1 else ""
+            if month_usage_total_list[i] is not None:
+                sensor_updator.update(PDWLY_MONTHLY_USAGE_TOTAL_SENSOR_NAME + profix, month_list[i],
+                                      month_usage_total_list[i], USAGE_UNIT_CUBE, month=True)
+            if month_usage_water_list[i] is not None:
+                sensor_updator.update(PDWLY_MONTHLY_USAGE_WATER_SENSOR_NAME + profix, month_list[i],
+                                      month_usage_water_list[i], USAGE_UNIT_CUBE, month=True)
+            if month_usage_dirty_list[i] is not None:
+                sensor_updator.update(PDWLY_MONTHLY_USAGE_DIRTY_SENSOR_NAME + profix, month_list[i],
+                                      month_usage_dirty_list[i], USAGE_UNIT_CUBE, month=True)
+            if month_charge_total_list[i] is not None:
+                sensor_updator.update(PDWLY_MONTHLY_CHARGE_TOTAL_SENSOR_NAME + profix, month_list[i],
+                                      month_charge_total_list[i], BALANCE_UNIT, month=True)
+            if month_charge_water_list[i] is not None:
+                sensor_updator.update(PDWLY_MONTHLY_CHARGE_WATER_SENSOR_NAME + profix, month_list[i],
+                                      month_charge_water_list[i], BALANCE_UNIT, month=True)
+            if month_charge_dirty_list[i] is not None:
+                sensor_updator.update(PDWLY_MONTHLY_CHARGE_DIRTY_SENSOR_NAME + profix, month_list[i],
+                                      month_charge_dirty_list[i], BALANCE_UNIT, month=True)
+    except Exception as e:
+        logging.error(f"浦东威立雅水费数据刷新任务失败，原因是 [{e}]")
+        traceback.print_exc()
+
+    # 二开新增：上海燃气数据（失败不影响国网/水费）
+    try:
+        user_id_list, yearly_usage_list, month_usage_list, month_charge_list, month_list = data_fetcher.fetch_shrq()
+        for i in range(0, len(user_id_list)):
+            profix = f"_{user_id_list[i]}" if len(user_id_list) > 1 else ""
+            if month_usage_list[i] is not None:
+                sensor_updator.update(SHRQ_BALANCE_SENSOR_NAME + profix, None, month_usage_list[i], USAGE_UNIT_CUBE)
+            if month_charge_list[i] is not None:
+                sensor_updator.update(SHRQ_MONTHLY_USAGE_SENSOR_NAME + profix, month_list[i], month_charge_list[i],
+                                      BALANCE_UNIT, month=True)
+            if yearly_usage_list[i] is not None:
+                sensor_updator.update(SHRQ_YEARLY_USAGE_SENSOR_NAME + profix, month_list[i], yearly_usage_list[i],
+                                      USAGE_UNIT_CUBE, month=True)
+    except Exception as e:
+        logging.error(f"上海燃气数据刷新任务失败，原因是 [{e}]")
+        traceback.print_exc()
+
+    # 国网电力（上游逻辑，含重试）
     for retry_times in range(1, RETRY_TIMES_LIMIT + 1):
         try:
             data_fetcher.fetch()

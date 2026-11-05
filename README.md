@@ -250,6 +250,13 @@ LLM_MODEL="Qwen/Qwen3.5-35B-A3B"
 ## 用户名映射（可选）
 # 为每个户号指定友好名称，格式：户号:名称,户号:名称
 # USER_NAMES="1234567890:家庭用电,0987654321:公司用电"
+
+## 可选数据源：上海燃气（SHRQ），不填则跳过，见下方「6）可选数据源」
+# SHRQ_PHONE_NUMBER=177xxxxxxxx
+# SHRQ_PASSWORD=xxxxxxxx
+
+## 可选数据源：浦东威立雅水费（PDWLY），不填则跳过，多个户号用列表格式
+# PDWLY_ID=['xxxxxxxxx','yyyyyyyyy']
 ```
 
 4. 运行
@@ -544,6 +551,37 @@ cards:
 
   更新电费余额不足提醒，在.env里设置提醒余额。目前我是用[pushplus](https://www.pushplus.plus/)的方案，注册pushplus然后，获取token，通知给谁就让谁注册并将token填到.env中
   token获取方法参考[https://cloud.tencent.com/developer/article/2139538](https://cloud.tencent.com/developer/article/2139538)
+
+## 6）可选数据源：上海燃气 / 浦东威立雅水费
+
+在 `.env` 中配置对应变量后，除国网电力外还会同时抓取**上海燃气（SHRQ，[www.shgas.com.cn](https://www.shgas.com.cn)）**与**浦东威立雅水费（PDWLY）**数据，并作为独立传感器推送至 Home Assistant。全部为可选配置：不填则自动跳过，任一数据源抓取失败也不影响其他数据源。
+
+```bash
+## 上海燃气（网页版登录手机号 / 密码）
+SHRQ_PHONE_NUMBER=177xxxxxxxx
+SHRQ_PASSWORD=xxxxxxxx
+
+## 浦东威立雅（缴费户号，多个用 Python 列表格式）
+PDWLY_ID=['xxxxxxxxx','yyyyyyyyy']
+```
+
+上海燃气登录验证码通过 `ddddocr` 本地离线识别（已加入 requirements.txt，无需额外配置）。
+
+新增 Home Assistant 实体（多户号时实体 id 后缀 `_户号`）：
+
+| 实体 entity_id | 说明 |
+|---|---|
+| `sensor.shrq_charge_balance` | 上海燃气 本期用量（m³，entity_id 命名沿用历史版本） |
+| `sensor.last_shrq_usage` | 上海燃气 本期账单金额（CNY，entity_id 命名沿用历史版本） |
+| `sensor.yearly_shrq_usage` | 上海燃气 年累计用量（m³） |
+| `sensor.last_pdwly_usage_total` | 浦东威立雅 本期总用量（m³，生活水+污水） |
+| `sensor.last_pdwly_usage_water` | 浦东威立雅 本期生活水用量（m³） |
+| `sensor.last_pdwly_usage_dirty` | 浦东威立雅 本期污水用量（m³） |
+| `sensor.last_pdwly_charge_total` | 浦东威立雅 本期总费用（CNY） |
+| `sensor.last_pdwly_charge_water` | 浦东威立雅 本期生活水费用（CNY） |
+| `sensor.last_pdwly_charge_dirty` | 浦东威立雅 本期污水费用（CNY） |
+
+账单明细同时写入 SQLite（表名 `shrq_bill{户号}` / `pdwly_bill{户号}`，数据库文件由 `DB_NAME` 决定；此部分固定使用 sqlite，不受 `DB_TYPE=MYSQL` 影响）。
 
 # 其他
 

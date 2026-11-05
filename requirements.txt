@@ -8,3 +8,4 @@ python-dotenv>=1.0.0
 nest-asyncio>=1.6.0
 playwright>=1.40
 cloakbrowser>=0.3.31
+ddddocr~=1.5.6

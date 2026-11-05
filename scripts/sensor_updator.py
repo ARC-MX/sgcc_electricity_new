@@ -386,3 +386,46 @@ class SensorUpdator:
             )
         except Exception as e:
             logging.error(f"Home Assistant REST API 调用失败，原因是 {e}")
+
+    # 二开新增：上海燃气 / 浦东威立雅传感器通用的更新入口
+    def update(self, sensorName: str, present_date, sensorState: float, sensorUnit: str, month=False):
+        """
+        Update the sensor state
+        :param sensorName: 此为id，不是name
+        :param present_date: 主要用于确定最近一次用量所代表的日期
+        :param sensorState: 传感器的状态
+        :param sensorUnit: 传感器的单位
+        """
+        token = os.getenv("SUPERVISOR_TOKEN") if self.base_url == SUPERVISOR_URL else self.token
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+        }
+        if month:
+            last_updated = datetime.now().strftime("%Y-%m")
+        else:
+            last_updated = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f%z")
+        if present_date:
+            request_body = {
+                "state": sensorState,
+                "attributes": {
+                    "present_date": present_date,
+                    "unit_of_measurement": sensorUnit
+                }
+            }
+        else:
+            request_body = {
+                "state": sensorState,
+                "unique_id": sensorName,
+                "attributes": {
+                    "unit_of_measurement": sensorUnit
+                }
+            }
+        url = self.base_url + API_PATH + sensorName  # /api/states/<entity_id>
+        try:
+            response = requests.post(url, json=request_body, headers=headers)
+            logging.debug(
+                f"Homeassistant REST API invoke, POST on {url}. response[{response.status_code}]: {response.content}")
+            logging.info(f"Homeassistant sensor {sensorName} state updated: {sensorState}{sensorUnit}")
+        except Exception as e:
+            logging.error(f"Homeassistant REST API invoke failed, reason is {e}")

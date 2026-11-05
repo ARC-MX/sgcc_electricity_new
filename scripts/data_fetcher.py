@@ -8,7 +8,12 @@ import subprocess
 
 import random
 import base64
+import sqlite3
+import requests
+import traceback
 from datetime import datetime
+from io import BytesIO
+from PIL import Image
 from playwright.sync_api import sync_playwright, TimeoutError as PltTimeout
 from sensor_updator import SensorUpdator
 from error_watcher import ErrorWatcher
@@ -41,12 +46,39 @@ def _get_cloak_launch():
 
 class DataFetcher:
 
-    def __init__(self, username: str, password: str):
+    def __init__(self, username: str, password: str, shrq_username: str = None, shrq_password: str = None, pdwly_id: str = None):
         if 'PYTHON_IN_DOCKER' not in os.environ:
             import dotenv
             dotenv.load_dotenv(verbose=True)
         self._username = username
         self._password = password
+        # 二开新增：上海燃气 / 浦东威立雅数据源
+        self.shrq_username = shrq_username
+        self.shrq_password = shrq_password
+        self.pdwly_id = pdwly_id
+        self.shrq_token = None
+        self.shrq_userid = None
+        self.connect = None
+        self.db_name_pdwly_bill = None
+        self.db_name_shrq_bill = None
+        self.header = {
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,sq;q=0.7',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'Origin': 'https://www.shgas.com.cn',
+            'Pragma': 'no-cache',
+            'Referer': 'https://www.shgas.com.cn/',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-site',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+            'sec-ch-ua': '"Google Chrome";v="123", "Not:A-Brand";v="8", "Chromium";v="123"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"',
+            'token': '',
+            'Content-Type': 'application/json;charset=UTF-8'
+        }
 
         self.DRIVER_IMPLICITY_WAIT_TIME = int(os.getenv("DRIVER_IMPLICITY_WAIT_TIME", 60))
         self.RETRY_TIMES_LIMIT = int(os.getenv("RETRY_TIMES_LIMIT", 5))
@@ -924,6 +956,373 @@ class DataFetcher:
     # 要按什么顺序点击哪些汉字，下方是一组打乱的汉字候选。因此这里采用
     # “整张验证码截图 + 坐标点击”方案，且使用专门面向文字顺序任务的提示词。
     # ──────────────────────────────────────────────────────────────
+
+    # ==================== 二开新增：上海燃气 / 浦东威立雅数据源 ====================
+# ddddocr 仅在上海燃气登录验证码识别时使用，延迟导入
+    def connect_user_db_pdwly_bill(self, user_id):
+        """创建数据库集合，db_name = electricity_daily_usage_{user_id}
+        :param user_id: 用户ID"""
+        try:
+            # 创建数据库
+            self.connect = sqlite3.connect(os.getenv("DB_NAME"))
+            self.connect.cursor()
+            logging.info(f"Database of {os.getenv('DB_NAME')} created successfully.")
+            try:
+                # 创建表名
+                self.db_name_pdwly_bill = f"pdwly_bill{user_id}"
+                sql = f"CREATE TABLE {self.db_name_pdwly_bill} (date DATE PRIMARY KEY NOT NULL, sumpay REAL NOT NULL, copymeterstatus CHAR, prevmeterdata REAL, meterdata REAL, waternum REAL, dirtynum REAL, waterfee REAL, waterprice REAL, dirtyprice REAL, dirtyfee REAL, paytime CHAR, billstatus CHAR, copymeterdate CHAR, nextdate CHAR);"
+                self.connect.execute(sql)
+                logging.info(f"Table {self.db_name_pdwly_bill} created successfully")
+            except BaseException as e:
+                logging.debug(f"Table {self.db_name_pdwly_bill}  already exists: {e}")
+        # 如果表已存在，则不会创建
+        except BaseException as e:
+            logging.debug(f"Table: {self.db_name_pdwly_bill}  already exists:{e}")
+        finally:
+            return self.connect
+
+    def insert_data_pdwly_bill(self, data: dict):
+        # 创建索引
+        try:
+            sql = f"INSERT OR REPLACE INTO {self.db_name_pdwly_bill} VALUES('{data['date']}',{data['sumpay']},'{data['copymeterstatus']}','{data['prevmeterdata']}','{data['meterdata']}','{data['waternum']}','{data['dirtynum']}',{data['waterfee']},{data['waterprice']},{data['dirtyprice']},{data['dirtyfee']},'{data['paytime']}','{data['billstatus']}','{data['copymeterdate']}','{data['nextdate']}');"
+            self.connect.execute(sql)
+            self.connect.commit()
+        except BaseException as e:
+            logging.debug(f"PDWLY Data update failed: {e}")
+
+    def connect_user_db_shrq_bill(self, user_id):
+        """创建数据库集合，db_name = electricity_daily_usage_{user_id}
+        :param user_id: 用户ID"""
+        try:
+            # 创建数据库
+            self.connect = sqlite3.connect(os.getenv("DB_NAME"))
+            self.connect.cursor()
+            logging.info(f"Database of {os.getenv('DB_NAME')} created successfully.")
+            try:
+                # 创建表名
+                self.db_name_shrq_bill = f"shrq_bill{user_id}"
+                sql = f"CREATE TABLE {self.db_name_shrq_bill} (date DATE PRIMARY KEY NOT NULL, money REAL NOT NULL, paymentStatus CHAR, billingDate CHAR, billingType CHAR, readDate CHAR, nextReadDate CHAR, lastReading REAL, currentReading REAL, consumption REAL, yearConsumption REAL, price REAL, lastPayday CHAR, billYM CHAR, firstGear REAL, secondGear REAL, yearCount REAL, firstCount REAL, secondCount REAL, thirdCount REAL, firstMoney REAL, secondMoney REAL, thirdMoney REAL );"
+                self.connect.execute(sql)
+                logging.info(f"Table {self.db_name_shrq_bill} created successfully")
+            except BaseException as e:
+                logging.debug(f"Table {self.db_name_shrq_bill}  already exists: {e}")
+        # 如果表已存在，则不会创建
+        except BaseException as e:
+            logging.debug(f"Table: {self.db_name_shrq_bill}  already exists:{e}")
+        finally:
+            return self.connect
+
+    def insert_data_shrq_bill(self, data: dict):
+        # 创建索引
+        try:
+            sql = f"INSERT OR REPLACE INTO {self.db_name_shrq_bill} VALUES('{data['date']}',{data['money']},'{data['paymentStatus']}','{data['billingDate']}','{data['billingType']}','{data['readDate']}','{data['nextReadDate']}',{data['lastReading']},{data['currentReading']},{data['consumption']},{data['yearConsumption']},{data['price']},'{data['lastPayday']}',{data['billYM']},{data['firstGear']},{data['secondGear']},{data['yearCount']},{data['firstCount']},{data['secondCount']},{data['thirdCount']},{data['firstMoney']},{data['secondMoney']},{data['thirdMoney']});"
+            self.connect.execute(sql)
+            self.connect.commit()
+        except BaseException as e:
+            logging.debug(f"Data update failed: {e}")
+
+    def fetch_pdwly(self):
+        """the entry, only retry logic here """
+        try:
+            return self._fetch_pdwly()
+        except Exception as e:
+            traceback.print_exc()
+            logging.error(
+                f"Webdriver quit abnormly, reason: {e}. {self.RETRY_TIMES_LIMIT} retry times left.")
+
+    def _fetch_pdwly(self):
+        """main logic here"""
+
+        try:
+            # 获取上海燃气数据
+            user_id_list, month_usage_total_list, month_usage_water_list, month_usage_dirty_list, month_charge_total_list, month_charge_water_list, month_charge_dirty_list, month_list = self._get_pdwly_data()
+            return user_id_list, month_usage_total_list, month_usage_water_list, month_usage_dirty_list, month_charge_total_list, month_charge_water_list, month_charge_dirty_list, month_list
+        finally:
+            logging.info("Fetching pdwly data successfully.")
+
+    def fetch_shrq(self):
+        """the entry, only retry logic here """
+        try:
+            return self._fetch_shrq()
+        except Exception as e:
+            traceback.print_exc()
+            logging.error(
+                f"Webdriver quit abnormly, reason: {e}. {self.RETRY_TIMES_LIMIT} retry times left.")
+
+    def _fetch_shrq(self):
+        """main logic here"""
+
+        try:
+            # 获取上海燃气数据
+            user_id_list, yearly_usage_list, month_usage_list, month_charge_list, month_list = self._get_shrq_data()
+            return user_id_list, yearly_usage_list, month_usage_list, month_charge_list, month_list
+        finally:
+            logging.info("Fetching shrq data successfully.")
+
+    def _get_pdwly_data(self):
+        # 当前月份
+        from datetime import datetime
+        current_month = datetime.now().month
+        year = datetime.now().year - 1
+        if current_month < 10:
+            current_month = "0" + str(current_month)
+        start_time = str(year) + '-' + str(current_month)
+        month_usage_total_list = []
+        month_usage_water_list = []
+        month_usage_dirty_list = []
+        month_charge_total_list = []
+        month_charge_water_list = []
+        month_charge_dirty_list = []
+        month_list = []
+        for user in eval(self.pdwly_id):
+            pdwly_url = 'https://mtu.pudongwater.com/wkf/WX/GetBill?cid=' + str(
+                user) + '&kaishisj=' + start_time + '&jieshusj='
+            header = {
+                'User-Agent': 'Mozilla/5.0 (Linux; Android 5.0; SM-N9100 Build/LRX21V) > AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 > Chrome/37.0.0.0 Mobile Safari/537.36 > MicroMessenger/6.0.2.56_r958800.520 NetType/WIFI'
+            }
+            attempts = 0
+            max_retries = 5
+            while attempts < max_retries:
+                try:
+                    rsp = requests.get(pdwly_url, headers=header)
+                    rsp_data = json.loads(rsp.text)
+                    if rsp_data["code"] == "1":
+                        self.connect_user_db_pdwly_bill(user)
+                        month_usage_total_list_tmp = []
+                        month_usage_water_list_tmp = []
+                        month_usage_dirty_list_tmp = []
+                        month_charge_total_list_tmp = []
+                        month_charge_water_list_tmp = []
+                        month_charge_dirty_list_tmp = []
+                        month_list_tmp = []
+                        for bill in json.loads(rsp_data['data']):
+                            if int(bill.get('MONTH', '')) < 10:
+                                month = '0' + str(bill.get('MONTH', ''))
+                            else:
+                                month = str(bill.get('MONTH', ''))
+                            dic = {
+                                'date': bill.get('YEAR', '') + '-' + month,
+                                'sumpay': float(bill.get('SUMPAY', '')),
+                                'copymeterstatus': str(bill.get('COPYMETERSTATUS', '')),
+                                'prevmeterdata': str(bill.get('PREVMETERDATA', '')),
+                                'meterdata': bill.get('METERDATA', ''),
+                                'waternum': str(bill.get('WATERNUM', '')),
+                                'dirtynum': str(bill.get('DIRTYNUM', '')),
+                                'waterfee': bill.get('WATERFEE', ''),
+                                'waterprice': bill.get('WATERPRICE', ''),
+                                'dirtyprice': bill.get('DIRTYPRICE', ''),
+                                'dirtyfee': bill.get('DIRTYFEE', ''),
+                                'paytime': bill.get('PAYTIME', ''),
+                                'billstatus': str(bill.get('BILLSTATUS', '')),
+                                'copymeterdate': bill.get('COPYMETERDATE', ''),
+                                'nextdate': bill.get('NEXTDATE', '')
+                            }
+                            month_usage_total_list_tmp.append(str(float(bill.get('WATERNUM', '0')) + float(bill.get('DIRTYNUM', '0'))))
+                            month_usage_water_list_tmp.append(str(bill.get('WATERNUM', '')))
+                            month_usage_dirty_list_tmp.append(str(bill.get('DIRTYNUM', '')))
+                            month_charge_total_list_tmp.append(str(float(bill.get('WATERFEE', '0')) + float(bill.get('DIRTYFEE', '0'))))
+                            month_charge_water_list_tmp.append(str(bill.get('WATERFEE', '')))
+                            month_charge_dirty_list_tmp.append(str(bill.get('DIRTYFEE', '')))
+                            month_list_tmp.append(bill.get('YEAR', '') + '-' + month)
+                            # 插入到数据库
+                            try:
+                                self.insert_data_pdwly_bill(dic)
+                                logging.info(
+                                    f"水费数据插入成功！")
+                            except Exception as e:
+                                logging.debug(
+                                    f"水费数据插入失败: {str(e)}")
+
+                        self.connect.close()
+                        month_usage_total_list.append(month_usage_total_list_tmp[-1])
+                        month_usage_water_list.append(month_usage_water_list_tmp[-1])
+                        month_usage_dirty_list.append(month_usage_dirty_list_tmp[-1])
+                        month_charge_total_list.append(month_charge_total_list_tmp[-1])
+                        month_charge_water_list.append(month_charge_water_list_tmp[-1])
+                        month_charge_dirty_list.append(month_charge_dirty_list_tmp[-1])
+                        month_list.append(month_list_tmp[-1])
+                        logging.info(
+                            f"获取用户 {user} 水费账单数据成功.")
+                        attempts = 6
+                    else:
+                        logging.info(
+                            f"获取用户 {user} 水费账单数据不成功，重试中。。。")
+
+                except Exception as e:
+                    logging.error(f"获取用户 {user} 水费账单数据失败，超过最大重试次数: {str(e)}.")
+                attempts += 1
+                time.sleep(5)  # 等待指定的时间后重试
+
+        user_id_list = eval(self.pdwly_id)
+        return user_id_list, month_usage_total_list, month_usage_water_list, month_usage_dirty_list, month_charge_total_list, month_charge_water_list, month_charge_dirty_list, month_list
+
+    def _get_shrq_data(self):
+
+        login_url = 'https://web-api.shgas.com.cn/v1/user/common/doLogin'
+        img_url = 'https://web-api.shgas.com.cn/v1/thirdparty/common/img/getImgAuthCode?timestamp='
+        timestamp = int(time.time())
+        attempts = 0
+        max_retries = 5
+        while attempts < max_retries:
+            try:
+                get_img = requests.get(img_url + str(timestamp))
+                if get_img.status_code == 200:
+                    img_data = json.loads(get_img.text)
+                    try:
+                        if img_data['resultCode'] == '0000':
+                            # print(img_data)
+                            imgid = img_data['imgid']
+                            base64_str = img_data['base64Image']
+                            # 解码 Base64 字符串
+                            image_data = base64.b64decode(base64_str)
+                            # 将二进制数据转换为图像
+                            image = Image.open(BytesIO(image_data))
+                            import ddddocr
+                            ocr = ddddocr.DdddOcr(show_ad=False)
+                            result = ocr.classification(image)
+                            """
+                            取消显示图片
+        
+                            # 将图像转换为灰度图
+                            gray_image = image.convert('L')
+                            # 将图像缩小，便于打印
+                            width, height = gray_image.size
+                            aspect_ratio = height / float(width)
+                            new_width = 100  # 设置新的宽度
+                            new_height = int(aspect_ratio * new_width * 0.55)  # 调整高度以保持比例
+                            resized_image = gray_image.resize((new_width, new_height))
+                            # 将图像转换为 numpy 数组
+                            image_array = np.array(resized_image)
+                            # 定义 ASCII 字符集
+                            ascii_chars = '@%#*+=-:. '
+                            # 打印 ASCII 图像
+                            for row in image_array:
+                                line = ''.join(ascii_chars[pixel // 32] for pixel in row)  # 256/8 = 32
+                                print(line)
+        
+                            """
+                            img_code = result.splitlines()[-1]
+                            logging.info(f"上海燃气登录验证码：{img_code}")
+
+                            time.sleep(2)
+                            timestamp = int(time.time())
+                            post_data = {
+                                "imgAuthCode": img_code,
+                                "imgid": imgid,
+                                "method": "PWD",
+                                "mobile": self.shrq_username,
+                                "origin": "PC",
+                                "pwd": self.shrq_password,
+                                "qrCode": "",
+                                "smsAuthCode": "",
+                                "timestamp": timestamp * 1000
+                            }
+                            try:
+                                login = requests.post(login_url, data=json.dumps(post_data), headers=self.header)
+                                login_data = json.loads(login.text)
+                                token = login_data['token']
+                                if login_data['resultCode'] != '0000':
+                                    logging.info(f"上海燃气登录失败，将重试！")
+                                else:
+                                    logging.info(f"上海燃气登录成功！")
+                                    #
+                                    self.shrq_token = token
+
+                                    url = 'https://web-api.shgas.com.cn/v1/user/queryAccountListByUserCode'
+                                    query_data = {"timestamp": int(time.time()) * 1000}
+                                    self.header['token'] = token
+                                    rsp = requests.post(url, data=json.dumps(query_data), headers=self.header)
+                                    # 获取用户id
+                                    self.shrq_userid = json.loads(rsp.text)['accountList']
+                                    yearly_usage_list = []
+                                    month_usage_list = []
+                                    month_charge_list = []
+                                    month_list = []
+                                    for user in self.shrq_userid:
+                                        customerId = user['accountId']
+                                        logging.info(f"上海燃气用户ID： {customerId}")
+                                        time.sleep(15)
+                                        shrq_bill_url = 'https://web-api.shgas.com.cn/v1/accountingService/queryBills'
+
+                                        query_data = {"customerId": customerId, "companyCode": "PD", "origin": "PC",
+                                                      "timestamp": int(time.time()) * 1000}
+                                        try:
+                                            rsp = requests.post(shrq_bill_url, data=json.dumps(query_data), headers=self.header)
+                                            rsp_data = json.loads(rsp.text)
+                                            if rsp_data["resultCode"] == "0000":
+                                                self.connect_user_db_shrq_bill(customerId)
+                                                yearly_usage_list_tmp = []
+                                                month_usage_list_tmp = []
+                                                month_charge_list_tmp = []
+                                                month_list_tmp = []
+                                                for bill in rsp_data['bills']:
+                                                    dic = {
+                                                        'date': bill.get('billYM', ''),
+                                                        'money': float(bill.get('money', '')),
+                                                        'paymentStatus': str(bill.get('paymentStatus', '')),
+                                                        'billingDate': str(bill.get('billingDate', '')),
+                                                        'billingType': bill.get('billingType', ''),
+                                                        'readDate': str(bill.get('readDate', '')),
+                                                        'nextReadDate': str(bill.get('nextReadDate', '')),
+                                                        'lastReading': bill.get('lastReading', ''),
+                                                        'currentReading': bill.get('currentReading', ''),
+                                                        'consumption': bill.get('consumption', ''),
+                                                        'yearConsumption': bill.get('yearConsumption', ''),
+                                                        'price': bill.get('price', ''),
+                                                        'lastPayday': str(bill.get('lastPayday', '')),
+                                                        'billYM': bill.get('billYM', ''),
+                                                        'firstGear': bill.get('firstGear', ''),
+                                                        'secondGear': bill.get('secondGear', ''),
+                                                        'yearCount': bill.get('yearCount', ''),
+                                                        'firstCount': bill.get('firstCount', ''),
+                                                        'secondCount': bill.get('secondCount', ''),
+                                                        'thirdCount': bill.get('thirdCount', ''),
+                                                        'firstMoney': bill.get('firstMoney', ''),
+                                                        'secondMoney': bill.get('secondMoney', ''),
+                                                        'thirdMoney': bill.get('thirdMoney', '')
+                                                    }
+                                                    yearly_usage_list_tmp.append(bill.get('yearConsumption', ''))
+                                                    month_usage_list_tmp.append(bill.get('consumption', ''))
+                                                    month_charge_list_tmp.append(bill.get('money', ''))
+                                                    month_list_tmp.append(bill.get('billYM', ''))
+                                                    # 插入到数据库
+                                                    try:
+                                                        self.insert_data_shrq_bill(dic)
+                                                        logging.info(
+                                                            f"燃气数据插入成功！")
+                                                    except Exception as e:
+                                                        logging.debug(
+                                                            f"燃气数据插入失败: {str(e)}")
+
+                                                self.connect.close()
+                                                yearly_usage_list.append(yearly_usage_list_tmp[0])
+                                                month_usage_list.append(month_usage_list_tmp[0])
+                                                month_charge_list.append(month_charge_list_tmp[0])
+                                                month_list.append(month_list_tmp[0])
+                                                logging.info(
+                                                    f"获取用户 {customerId} 账单数据成功.")
+                                            else:
+                                                logging.error(f"获取用户 {customerId} 账单数据失败,稍后将继续重试")
+                                        except Exception as e:
+                                            logging.error(f"获取用户 {customerId} 账单数据失败: {str(e)}.稍后将继续重试")
+                                    user_id_list = self.shrq_userid
+                                    return user_id_list, yearly_usage_list, month_usage_list, month_charge_list, month_list
+                            except Exception as e:
+                                logging.debug(f"登录失败！: {str(e)},将继续重试")
+                        else:
+                            logging.debug(f"获取登录验证码异常,将继续重试. ")
+                        # logging.info(f"获取登录验证码：{img_code}")
+                    except Exception as e:
+                        logging.debug(f"获取登录验证码异常,将继续重试. {str(e)}")
+                else:
+                    logging.debug(f"获取登录验证码网络异常,将继续重试.")
+            except Exception as e:
+                logging.debug(f"获取登录验证码失败，将继续重试: {str(e)}")
+
+            attempts += 1
+            time.sleep(5)  # 等待指定的时间后重试
+
+        logging.debug(f"超过最大重试次数，明日将继续重试。")
 
     def fetch(self):
         try:
