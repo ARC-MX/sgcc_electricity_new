@@ -212,11 +212,21 @@ def solve_text_sequence_captcha(page, login_url, retry_limit=5) -> bool:
     if not api_key:
         logger.error("LLM_API_KEY 未设置")
         return False
-    client = OpenAI(
-        base_url=os.getenv("LLM_BASE_URL", "https://api.siliconflow.cn/v1").strip(),
-        api_key=api_key,
-    )
+    base_url = os.getenv("LLM_BASE_URL", "https://api.siliconflow.cn/v1").strip()
     model = os.getenv("LLM_MODEL", "Qwen/Qwen3.5-35B-A3B").strip()
+
+    # Endpoint chain: primary endpoint (env) plus optional
+    # LLM_FALLBACK_MODELS entries (same syntax as click_captcha_solver.py)
+    endpoints = [(base_url, api_key, model)]
+    for item in os.getenv("LLM_FALLBACK_MODELS", "").split(","):
+        item = item.strip()
+        if not item:
+            continue
+        parts = item.split("::")
+        if len(parts) == 3:
+            endpoints.append((parts[0].strip(), parts[1].strip(), parts[2].strip()))
+        elif len(parts) == 1:
+            endpoints.append((base_url, api_key, item))
 
     for attempt in range(retry_limit):
         if page.url != login_url:
@@ -257,18 +267,32 @@ def solve_text_sequence_captcha(page, login_url, retry_limit=5) -> bool:
                 if box and box["width"] >= 10:
                     img_w, img_h = box["width"], box["height"]
                     img_b64 = base64.b64encode(img_bytes).decode()
-                    resp = client.chat.completions.create(
-                        model=model,
-                        messages=[
-                            {"role": "system", "content": "只输出 JSON。"},
-                            {"role": "user", "content": [
-                                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_b64}"}},
-                                {"type": "text", "text": prompt},
-                            ]},
-                        ],
-                        max_tokens=300,
-                    )
-                    result_text = resp.choices[0].message.content or ""
+                    result_text = ""
+                    for mi, (ep_url, ep_key, model_name) in enumerate(endpoints):
+                        try:
+                            ep_client = OpenAI(base_url=ep_url, api_key=ep_key, timeout=120.0)
+                            resp = ep_client.chat.completions.create(
+                                model=model_name,
+                                messages=[
+                                    {"role": "system", "content": "只输出 JSON。"},
+                                    {"role": "user", "content": [
+                                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_b64}"}},
+                                        {"type": "text", "text": prompt},
+                                    ]},
+                                ],
+                                max_tokens=1024,
+                            )
+                            result_text = resp.choices[0].message.content or ""
+                            if not result_text.strip():
+                                logger.warning(f"Model {model_name} returned empty content")
+                                continue
+                            if mi > 0:
+                                logger.info(f"Fallback endpoint {ep_url} / {model_name} succeeded")
+                            break
+                        except Exception as e:
+                            logger.warning(f"Model {model_name} failed: {e}")
+                    if not result_text:
+                        raise RuntimeError(f"LLM 调用失败（已尝试 {len(endpoints)} 个端点）")
                     logger.info(f"LLM: {result_text[:200]}")
 
                     sequence, coords = _parse_text_captcha_result(result_text, img_w, img_h)
